@@ -1,0 +1,34 @@
+$footerSize: 4em;
+
+#views, #overlay {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  bottom: $footerSize;
+}
+
+#leftView, #rightView {
+  position: absolute;
+  top: 0px;
+  width: 33%;
+  bottom: 0px;
+  overflow: auto;
+}
+#leftView {
+  left: 0px;
+}
+#rightView {
+  right: 0px;
+}
+
+#footer {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  height: $footerSize;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
