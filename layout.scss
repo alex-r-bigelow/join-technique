@@ -1,7 +1,10 @@
+@import './colors.scss';
+
 html, body {
   height: 100%;
   padding: 0;
   margin: 0;
+  background-color: $pageBackgroundColor;
 }
 
 body {
@@ -10,13 +13,12 @@ body {
   overflow: hidden;
 
   /* avoid browser level touch actions */
-  xtouch-action: none;
+  touch-action: none;
 
   #joinInterface,
   #splitter,
   #resultsInterface {
     position: relative;
-    overflow: auto;
   }
   #joinInterface {
     flex: 0 0 auto;
@@ -25,14 +27,20 @@ body {
     min-width: 0%;
     max-width: calc(100% - 1em);
     z-index: 1;
+    overflow: hidden;
   }
 
   #splitter {
     flex: 0 0 auto;
     width: 1em;
-    background: url('/img/vsizegrip.png') center center no-repeat #cccccc;
+    background-image: url('/img/vsizegrip.svg');
+    background-position: center;
+    background-size: 8px auto;
+    background-repeat: no-repeat;
+    background-color: $darkUiColor;
     cursor: col-resize;
     z-index: 2;
+    overflow: hidden;
   }
 
   #resultsInterface {
@@ -40,5 +48,6 @@ body {
     /* resizable */
     width: 100%;
     z-index: 1;
+    overflow: auto;
   }
 }
