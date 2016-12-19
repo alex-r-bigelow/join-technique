@@ -11,15 +11,15 @@ $footerSize: 4em;
   #leftView, #rightView {
     position: absolute;
     top: 0px;
-    width: 33%;
+    width: calc(33% - 1em);
     bottom: 0px;
     overflow: auto;
   }
   #leftView {
-    left: 0px;
+    left: 1em;
   }
   #rightView {
-    right: 0px;
+    right: 1em;
   }
   #rightView.collapsed,
   #leftView.collapsed {
@@ -27,8 +27,8 @@ $footerSize: 4em;
   }
   #rightView.focused,
   #leftView.focused {
-    left: 0px;
-    width: 100%;
+    left: 1em;
+    width: calc(100% - 2em);
   }
 }
 

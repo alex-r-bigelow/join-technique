@@ -10,11 +10,15 @@
   display: flex;
   flex-direction: column;
 
-  .buttonContainer {
-    margin-bottom: 0.5em;
+  #pageContent {
+    position: relative;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
   }
   a.button {
-    margin: 0.5em;
+    margin: 0.5em 0em;
   }
   textarea {
     margin-top: 0.5em;

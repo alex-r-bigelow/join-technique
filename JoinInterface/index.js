@@ -11,10 +11,12 @@ class JoinInterface {
   constructor (d3el, defaultLeftView, defaultRightView) {
     this.d3el = d3el;
     this.leftModel = null;
+    defaultLeftView.joinInterface = this;
     this.leftViews = [defaultLeftView];
     this.currentLeftView = 0;
     this.showLeftView = true;
     this.rightModel = null;
+    defaultRightView.joinInterface = this;
     this.rightViews = [defaultRightView];
     this.currentRightView = 0;
     this.showRightView = true;
@@ -61,6 +63,21 @@ class JoinInterface {
     } else {
       throw new Error('Unknown side: ' + side);
     }
+  }
+  openNextView (side) {
+    if (side instanceof View) {
+      side = this.getSide(side);
+    }
+    if (side === JoinInterface.LEFT) {
+      this.currentLeftView = Math.min(this.leftViews.length - 1, this.currentLeftView + 1);
+    } else if (side === JoinInterface.RIGHT) {
+      this.currentRightView = Math.min(this.rightViews.length - 1, this.currentRightView + 1);
+    } else {
+      throw new Error('Unknown side: ' + side);
+    }
+    // Let the view know that it needs to do a fresh render
+    this.leftViews[this.currentLeftView].d3el = null;
+    this.render();
   }
   render () {
     if (!this.addedTemplate) {

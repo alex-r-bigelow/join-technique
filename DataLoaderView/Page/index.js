@@ -1,9 +1,8 @@
-import missingIcon from '../img/missing.svg';
-
-class View {
-  constructor () {
-    this.icon = missingIcon;
-    this.d3el = null;
+class Page {
+  constructor (parentView, prevPage) {
+    this.parentView = parentView;
+    this.prevPage = prevPage || null;
+    this.showContinueButton = false;
   }
   hasRenderedTo (d3el) {
     // Determine whether this is the first time we've rendered
@@ -25,20 +24,17 @@ class View {
       d3el.html('<p>Error: render() not implemented</p>');
     }
   }
-  get model () {
-    if (!this.joinInterface) {
-      return null;
-    } else {
-      return this.joinInterface.getModel(this);
+  goBack () {
+    if (this.prevPage !== null) {
+      this.parentView.setPage(this.prevPage);
     }
   }
-  set model (model) {
-    if (!this.joinInterface) {
-      throw new Error('View has not been added to JoinInterface');
-    } else {
-      this.joinInterface.setModel(this, model);
-    }
+  proceed () {
+    throw new Error('Undefined continue button behavior');
+  }
+  get canProceed () {
+    return false;
   }
 }
 
-export default View;
+export default Page;

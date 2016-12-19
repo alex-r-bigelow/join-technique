@@ -14,6 +14,7 @@ body {
 h1, h2 {
   font-size: 1.5em;
   line-height: 1em;
+  margin: 0.75em 0em 0.25em 0em;
   font-family: $sansFont;
   font-weight: $sansWeight;
 }
@@ -24,10 +25,11 @@ h2 {
   color: $lightTextColor;
 }
 h3, h4 {
-  font-family: $serifFont;
-  font-weight: $serifWeight;
   font-size: 1em;
   line-height: 1em;
+  margin: 0.5em 0em;
+  font-family: $serifFont;
+  font-weight: $serifWeight;
 }
 h3 {
   color: $darkTextColor;
@@ -53,4 +55,11 @@ a.button {
 a.button:hover {
   color: $darkUiColor;
   background-color: $pageBackgroundColor;
+}
+a.button.disabled,
+a.button.disabled:hover {
+  cursor: default;
+  border: 1px solid $lightUiColor;
+  background-color: $lightUiColor;
+  color: $pageBackgroundColor;
 }
