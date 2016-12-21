@@ -170,7 +170,7 @@ class JoinInterface {
       });
   }
 }
-JoinInterface.LEFT = 0;
-JoinInterface.RIGHT = 0;
+JoinInterface.LEFT = 'LEFT';
+JoinInterface.RIGHT = 'RIGHT';
 
 export default JoinInterface;

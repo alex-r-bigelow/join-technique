@@ -4,6 +4,10 @@ import 'jquery-resizable-dom';
 import './layout.scss';
 import './fonts.scss';
 
+// Make d3 and jQuery available on the console
+window.d3 = d3;
+window.jQuery = jQuery;
+
 import recolorImages from './lib/recolorImages.js';
 // import colorScheme from '!!sass-variable-loader!./colors.scss';
 // TODO: getting a weird segfault when using sass-variable-loader...

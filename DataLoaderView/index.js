@@ -17,7 +17,7 @@ class DataLoaderView extends View {
     }
     this.d3el.select('#status').text(() => {
       if (this.model) {
-        return 'Loaded: ' + this.model.fileName;
+        return 'Loaded: ' + this.model.name;
       } else {
         return 'No data loaded';
       }
