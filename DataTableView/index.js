@@ -1,4 +1,5 @@
-import Handsontable from '../node_modules/handsontable/dist/handsontable.full';
+import Handsontable from '../node_modules/handsontable/dist/handsontable.full.js';
+import '../node_modules/handsontable/dist/handsontable.full.css';
 import View from '../View';
 
 import template from './template.html';

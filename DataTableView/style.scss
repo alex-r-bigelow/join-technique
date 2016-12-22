@@ -1,4 +1,5 @@
 @import '../colors.scss';
+@import '../fonts.scss';
 
 .dataTableView {
   position: absolute;
@@ -12,10 +13,12 @@
 
   #table {
     flex: 1 1 auto;
+    font-family: $monoFont;
   }
   #message {
     flex: 0 0 auto;
     text-align: right;
+    margin-top: 1em;
   }
   #message.error {
     color: $errorColor;
