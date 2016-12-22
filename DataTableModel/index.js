@@ -8,8 +8,8 @@ class DataTableModel {
       }
     });
 
-    this._parsedRecords = null;
-    this._partialRecord = null;
+    this.parsedRecords = null;
+    this.parsedHeaders = null;
     this.parseProgress = null;
 
     this.mode = DataTableModel.DSV_MODE;
@@ -25,8 +25,7 @@ class DataTableModel {
       columnHeaders: 1
     };
     // When columnHeaders is an integer, it means that the first n lines are used as the
-    // column headers (and that those headers have not yet been fully parsed).
-    // Otherwise, this is an array (could be the result of parsing, or user-supplied).
+    // column headers. Otherwise, this should be a user-supplied array of predefined column names.
 
     // This is an array of positions to slice at
     this.fixedWidthSettings = [];
@@ -41,12 +40,19 @@ class DataTableModel {
       xpath: '//'
     };
   }
-  get parsedRecords () {
+  get parsedPercentage () {
+    if (this.parseProgress === null) {
+      return null;
+    } else {
+      return 100 * this.parseProgress / this.numChunks();
+    }
+  }
+  parse () {
     return new Promise((resolve, reject) => {
-      if (this._parsedRecords !== null) {
-        resolve(this._parsedRecords);
+      if (this.parsedRecords !== null) {
+        resolve(this.parsedRecords);
       } else {
-        this.parse(resolve, errorMessage => {
+        this._parse(resolve, errorMessage => {
           // parsing failed for some reason; interrupt further parsing
           // before we pass along the error message
           this.interrupt();
@@ -56,16 +62,15 @@ class DataTableModel {
     });
   }
   interrupt () {
-    this._parsedRecords = null;
-    this._partialRecord = null;
+    this.parsedRecords = null;
+    this.parsedHeaders = null;
     this._parseProgress = null;
   }
-  parse (successCallback, failureCallback) {
-    this._parsedRecords = [];
-    this._partialRecord = null;
+  _parse (successCallback, failureCallback) {
+    this.parsedRecords = [];
     let state;
     for (this.parseProgress = 0; this.parseProgress < this.numChunks(); this.parseProgress += 1) {
-      if (this._parsedRecords === null) {
+      if (this.parsedRecords === null) {
         // Something interrupted the process; we should stop parsing
         // (no need to send an additional "interrupted" failure message - there will
         // either be another error message that caused this interruption, or the
@@ -74,23 +79,23 @@ class DataTableModel {
         return;
       }
       let chunk = this.nextChunk();
-      try {
-        if (this.mode === DataTableModel.DSV_MODE) {
-          state = this.parseDsvChunk(chunk, state);
-        } else if (this.mode === DataTableModel.FIXED_WIDTH_MODE) {
-          state = this.parseFixedWithChunk(chunk, state);
-        } else if (this.mode === DataTableModel.JSON_MODE) {
-          state = this.parseJsonChunk(chunk, state);
-        } else if (this.mode === DataTableModel.XML_MODE) {
-          state = this.parseXmlChunk(chunk, state);
-        } else {
-          throw new Error('Error parsing: unknown mode');
-        }
-      } catch (e) {
-        failureCallback(e.message);
+      // try {
+      if (this.mode === DataTableModel.DSV_MODE) {
+        state = this.parseDsvChunk(chunk, state);
+      } else if (this.mode === DataTableModel.FIXED_WIDTH_MODE) {
+        state = this.parseFixedWithChunk(chunk, state);
+      } else if (this.mode === DataTableModel.JSON_MODE) {
+        state = this.parseJsonChunk(chunk, state);
+      } else if (this.mode === DataTableModel.XML_MODE) {
+        state = this.parseXmlChunk(chunk, state);
+      } else {
+        throw new Error('Error parsing: unknown mode');
       }
+      // } catch (e) {
+      //   failureCallback(e.message);
+      // }
     }
-    successCallback(this._parsedRecords);
+    successCallback(this.parsedRecords);
   }
   nextDsvValue (index, chunk, oldState) {
     // Look ahead until we see a delimiter, unescaped line break,
@@ -104,9 +109,14 @@ class DataTableModel {
     while (true) {
       if (index >= chunk.length) {
         // the value was (potentially) split in two by the end of the chunk;
+        // check if this is the last chunk and return the finished value. Otherwise,
         // return the full state object so that we can pick up where we left off
+        if (this.parseProgress + 1 >= this.numChunks()) {
+          state.finished = true;
+        }
         return state;
       }
+      let charHandled = false;
       if (!state.escapeNextChar) {
         if (!state.quoted) {
           if (this.dsvSettings.delimiters.indexOf(chunk[index]) !== -1 ||
@@ -117,111 +127,30 @@ class DataTableModel {
           }
         } else if (chunk[index] === this.dsvSettings.quoteChar) {
           state.quoted = !state.quoted;
+          charHandled = true;
         } else if (chunk[index] === this.dsvSettings.escapeChar) {
           state.escapeNextChar = true;
-        } else {
-          state.escapeNextChar = false;
-          state.value += chunk[index];
+          charHandled = true;
         }
-      } else {
+      }
+      if (!charHandled) {
         state.escapeNextChar = false;
         state.value += chunk[index];
       }
       index += 1;
     }
   }
-  getDsvHeaders (index, chunk, oldState) {
-    if (this.dsvSettings.columnHeaders instanceof Array) {
-      // If the user has predefined the headers, just return those
-      return {
-        headers: this.dsvSettings.columnHeaders,
-        finished: true,
-        numHeaders: this.dsvSettings.columnHeaders.length
-      };
-    }
-    let state = oldState || {
-      row: 0,
-      headers: [],
-      finished: false,
-      numHeaders: 0
-    };
-    state.index = index;
-    // starting a new chunk, so even oldState should start at index (in that case,
-    // index will be zero)
-
-    // check if we have a split value that we're starting with...
-    let oldValue = null;
-    if (state.headers.length > 0 && state.headers[state.headers.length - 1].finished === false) {
-      oldValue = state.headers.pop();
-    }
-    while (true) {
-      let current = this.nextDsvValue(index, chunk, oldValue);
-      oldValue = null;
-      state.headers.push(current);
-      state.index += current.value.length;
-      if (!current.finished || index >= chunk.length) {
-        // we got a split value back; this also means that
-        // the rest of the header is in another chunk
-        return state;
-      }
-      // Okay, now we know that we've added a finished value; increment
-      // the count of total headers if we're on the first row
-      if (state.row === 0) {
-        state.numHeaders += 1;
-      }
-      // Move forward a character to skip the delimiter or newline
-      let newline = this.dsvSettings.lineBreakChars.indexOf(chunk[state.index]) !== -1;
-      state.index += 1;
-      while (this.dsvSettings.mergeConsecutiveDelimiters) {
-        // chew up any consecutive delimiters
-        if (state.index >= chunk.length) {
-          break;
-        } else if (this.devSettings.lineBreakChars.indexOf(chunk[state.index] !== -1)) {
-          newline = true;
-          break;
-        } else if (this.devSettings.delimiters.indexOf(chunk[state.index]) === -1) {
-          break;
-        }
-        state.index += 1;
-      }
-      if (newline) {
-        // That was a newline...
-        state.row += 1;
-        if (state.row >= this.dsvSettings.columnHeaders) {
-          // we've finished extracting all the headers
-          state.finished = true;
-          // if there was more than one row, we'll need to stitch each chunk together
-          let temp = [];
-          state.headers.forEach((h, i) => {
-            i = i % state.numHeaders;
-            if (temp.length >= i) {
-              temp.push('');
-            }
-            if (temp[i].length > 0) {
-              temp[i] += '\n';
-            }
-            temp[i] += h;
-          });
-          state.headers = temp;
-          return state;
-        }
-      }
-    }
-  }
   parseDsvChunk (chunk, oldState) {
     let index = 0;
-    if (!(this.dsvSettings.columnHeaders instanceof Array)) {
-      let headerState = this.getDsvHeaders(index, oldState);
-      if (headerState.finished === false) {
-        return headerState;
-      } else {
-        this.dsvSettings.columnHeaders = headerState.headers;
-        index = headerState.index;
-      }
+    if (this.parsedHeaders === null && this.dsvSettings.columnHeaders instanceof Array) {
+      this.parsedHeaders = this.dsvSettings.columnHeaders;
+    } else if (typeof this.dsvSettings.columnHeaders !== 'number') {
+      throw new Error('columnHeaders setting must be an array or an integer');
     }
     let state = oldState || {
       values: [],
-      finished: false
+      finished: false,
+      row: 0
     };
     state.index = index;
     // starting a new chunk, so even oldState should start at index (in that case,
@@ -233,37 +162,82 @@ class DataTableModel {
       oldValue = state.values.pop();
     }
     while (true) {
-      let current = this.nextDsvValue(index, chunk, oldValue);
+      let current = this.nextDsvValue(state.index, chunk, oldValue);
       oldValue = null;
       state.values.push(current);
       state.index += current.value.length;
-      if (!current.finished || index >= chunk.length) {
-        // we got a split value back or we finished the chunk
-        return state;
-      }
-      // Move forward a character to skip the delimiter or newline
-      let newline = this.dsvSettings.lineBreakChars.indexOf(chunk[state.index]) !== -1;
-      state.index += 1;
-      while (this.dsvSettings.mergeConsecutiveDelimiters) {
-        // chew up any consecutive delimiters
-        if (state.index >= chunk.length) {
-          break;
-        } else if (this.devSettings.lineBreakChars.indexOf(chunk[state.index] !== -1)) {
-          newline = true;
-          break;
-        } else if (this.devSettings.delimiters.indexOf(chunk[state.index]) === -1) {
-          break;
-        }
+      let definedHeaders = this.parsedHeaders !== null;
+      let numHeaders = definedHeaders ? this.parsedHeaders.length : null;
+      let endOfChunk = state.index >= chunk.length;
+      let newline = false;
+
+      if (!endOfChunk) {
+        // Move forward a character to skip the delimiter or newline
+        newline = this.dsvSettings.lineBreakChars.indexOf(chunk[state.index]) !== -1;
         state.index += 1;
+        while (this.dsvSettings.mergeConsecutiveDelimiters) {
+          // chew up any consecutive delimiters
+          if (state.index >= chunk.length) {
+            break;
+          } else if (this.devSettings.lineBreakChars.indexOf(chunk[state.index] !== -1)) {
+            newline = true;
+            break;
+          } else if (this.devSettings.delimiters.indexOf(chunk[state.index]) === -1) {
+            break;
+          }
+          state.index += 1;
+        }
+        // update endOfChunk
+        endOfChunk = state.index >= chunk.length;
       }
-      if (newline) {
-        // That was a newline; the row should be finished
-        let newRecord = {};
-        this.dsvSettings.columnHeaders.forEach((h, i) => {
-          newRecord[h] = state.values[i];
-        });
-        this._parsedRecords.push(newRecord);
-        state.values = [];
+
+      if (newline || (endOfChunk && current.finished)) {
+        // That was a newline or the end of the document;
+        // this row is finished
+        if (state.row === 0) {
+          // finished the first line, so we know how many headers we have
+          numHeaders = state.values.length;
+        }
+        state.row += 1;
+        if (!definedHeaders) {
+          if (state.row >= this.dsvSettings.columnHeaders) {
+            // we've finished extracting all the headers
+            // if there was more than one row, we'll need to stitch each chunk together
+            let temp = [];
+            state.values.forEach((h, i) => {
+              i = i % numHeaders;
+              if (i >= temp.length) {
+                temp.push('');
+              }
+              if (temp[i].length > 0) {
+                temp[i] += '\n';
+              }
+              temp[i] += h.value;
+            });
+            this.parsedHeaders = temp;
+            state.values = [];
+          }
+          // If we're *not* done extracting all the headers,
+          // we want to continue to collect all the headers from the next row
+          // (the logic above handles the fact that state.values gets longer
+          // than state.numHeaders)
+        } else {
+          // It was a regular data row
+          let newRecord = [];
+          // TODO: does it make more sense to add dicts instead of arrays with
+          // potentially empty strings? AFAIK, handsontable behaves better
+          // when they're arrays...
+          this.parsedHeaders.forEach((h, i) => {
+            newRecord.push(state.values[i].value);
+          });
+          this.parsedRecords.push(newRecord);
+          state.values = [];
+        }
+      }
+      if (endOfChunk) {
+        // we've parsed the whole chunk; time to send it back
+        state.finished = current.finished;
+        return state;
       }
     }
   }

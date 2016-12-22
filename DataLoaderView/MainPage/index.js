@@ -21,7 +21,7 @@ class MainPage extends Page {
     this.parentView.setPage(new PastePage(this.parentView, this));
   }
   newTable () {
-    let model = new StringDataTableModel('');
+    let model = new StringDataTableModel('this,is,a,test\n1,2,3,4');
     this.parentView.joinInterface.setModel(this.parentView, model);
     this.parentView.joinInterface.openNextView(this.parentView);
   }

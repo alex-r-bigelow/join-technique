@@ -11,6 +11,10 @@ body {
   font-weight: $serifWeight;
   color: $darkTextColor;
 }
+.bold {
+  font-family: $sansFont;
+  font-weight: $sansWeight;
+}
 h1, h2 {
   font-size: 1.5em;
   line-height: 1em;

@@ -21,8 +21,11 @@ recolorImages(colorScheme);
 
 import JoinInterface from './JoinInterface';
 import DataLoaderView from './DataLoaderView';
+import DataTableView from './DataTableView';
 
 let joinInterface = new JoinInterface(d3.select('#joinInterface'), new DataLoaderView(), new DataLoaderView());
+joinInterface.addView(JoinInterface.LEFT, new DataTableView());
+joinInterface.addView(JoinInterface.RIGHT, new DataTableView());
 
 function renderViews () {
   joinInterface.render();
