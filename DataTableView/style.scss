@@ -14,6 +14,30 @@
   #table {
     flex: 1 1 auto;
     font-family: $monoFont;
+
+    /* see http://docs.handsontable.com/0.29.2/tutorial-styling.html
+    for a reference as to how to customize the table beyond the defaults */
+
+    .handsontable td.area {
+        background-color: $selectionLightColor;
+    }
+
+    .wtBorder {
+      background-color: $selectionDarkColor !important;
+    }
+
+    .ht__highlight {
+      background-color: $selectionDarkColor;
+    }
+
+    .colHeader:after {
+      color: $pageBackgroundColor;
+      position: relative;
+      right: auto;
+      font-family: sans-serif;
+      font-size: 0.5em;
+      margin: 0em 0.5em;
+    }
   }
   #message {
     flex: 0 0 auto;

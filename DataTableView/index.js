@@ -35,7 +35,26 @@ class DataTableView extends View {
       this.d3el.html(template);
       this.handsontable = new Handsontable(this.d3el.select('#table').node(), {
         data: this.model ? this.model.parsedRecords : [],
-        colHeaders: this.model ? this.model.parsedHeaders : []
+        colHeaders: this.model ? this.model.parsedHeaders : [],
+        rowHeaders: index => {
+          // When a sort is applied, we want to list the native physical row
+          if (!this.handsontable) {
+            return index;
+          } else {
+            let plugin = this.handsontable.getPlugin('ColumnSorting');
+            let physicalRow = plugin.untranslateRow(index);
+            if (physicalRow === undefined) {
+              return index;
+            } else {
+              return physicalRow;
+            }
+          }
+        },
+        manualColumnResize: true,
+        manualRowResize: true,
+        contextMenu: true,
+        columnSorting: true,
+        sortIndicator: true
       });
     }
 

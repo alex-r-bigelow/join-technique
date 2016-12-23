@@ -95,16 +95,16 @@ class JoinInterface {
     this.renderFooter();
   }
   renderEachView () {
+    this.d3el.select('#leftView').classed('collapsed', !this.showLeftView);
+    this.d3el.select('#leftView').classed('focused', !this.showRightView);
+    this.d3el.select('#rightView').classed('collapsed', !this.showRightView);
+    this.d3el.select('#rightView').classed('focused', !this.showLeftView);
     if (this.showLeftView) {
       this.leftViews[this.currentLeftView].render(this.d3el.select('#leftView'));
     }
-    this.d3el.select('#leftView').classed('collapsed', !this.showLeftView);
-    this.d3el.select('#leftView').classed('focused', !this.showRightView);
     if (this.showRightView) {
       this.rightViews[this.currentRightView].render(this.d3el.select('#rightView'));
     }
-    this.d3el.select('#rightView').classed('collapsed', !this.showRightView);
-    this.d3el.select('#rightView').classed('focused', !this.showLeftView);
   }
   renderOverlay () {
     // todo
