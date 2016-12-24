@@ -2,14 +2,15 @@
 import template from './template.html';
 import './style.scss';
 
+import View from '../View';
 import JoinableView from '../JoinableView';
 
 import hiddenIcon from '../img/hide.svg';
 import visibleIcon from '../img/show.svg';
 
-class JoinInterfaceView {
-  constructor (d3el, defaultLeftView, defaultRightView) {
-    this.d3el = d3el;
+class JoinInterfaceView extends View {
+  constructor (defaultLeftView, defaultRightView) {
+    super();
     this.leftModel = null;
     defaultLeftView.joinInterfaceView = this;
     this.leftViews = [defaultLeftView];
@@ -79,10 +80,9 @@ class JoinInterfaceView {
     this.leftViews[this.currentLeftView].d3el = null;
     this.render();
   }
-  render () {
-    if (!this.addedTemplate) {
+  render (d3el) {
+    if (!this.hasRenderedTo(d3el)) {
       this.d3el.html(template);
-      this.addedTemplate = true;
     }
     // Have to manually update the overlay SVG size
     let bounds = this.d3el.select('#views').node().getBoundingClientRect();

@@ -22,8 +22,8 @@ class MainPage extends Page {
   }
   newTable () {
     let model = new StringDataTableModel('this,is,a,test\n,2,3,\n5,6,,8');
-    this.parentView.joinInterface.setModel(this.parentView, model);
-    this.parentView.joinInterface.openNextView(this.parentView);
+    this.parentView.joinInterfaceView.setModel(this.parentView, model);
+    this.parentView.joinInterfaceView.openNextView(this.parentView);
   }
   openFileDialog () {
     jQuery(this.d3el.node()).find('#upload').click();

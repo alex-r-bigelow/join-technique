@@ -16,7 +16,7 @@ class PastePage extends Page {
   }
   proceed () {
     let model = new StringDataTableModel(this.d3el.select('#pasteArea').node().value);
-    this.parentView.joinInterface.setModel(this.parentView, model);
+    this.parentView.joinInterfaceView.setModel(this.parentView, model);
     this.parentView.setPage(new ParsePage(this.parentView, this));
   }
   get canProceed () {

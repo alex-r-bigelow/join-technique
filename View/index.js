@@ -1,8 +1,5 @@
-import missingIcon from '../img/missing.svg';
-
 class View {
   constructor () {
-    this.icon = missingIcon;
     this.d3el = null;
   }
   hasRenderedTo (d3el) {
@@ -23,20 +20,6 @@ class View {
   render (d3el) {
     if (!this.hasRenderedTo(d3el)) {
       d3el.html('<p>Error: render() not implemented</p>');
-    }
-  }
-  get model () {
-    if (!this.joinInterface) {
-      return null;
-    } else {
-      return this.joinInterface.getModel(this);
-    }
-  }
-  set model (model) {
-    if (!this.joinInterface) {
-      throw new Error('View has not been added to JoinInterface');
-    } else {
-      this.joinInterface.setModel(this, model);
     }
   }
 }

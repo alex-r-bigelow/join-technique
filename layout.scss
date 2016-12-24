@@ -22,15 +22,15 @@ body {
   /* avoid browser level touch actions */
   touch-action: none;
 
-  #joinInterface,
+  #joinInterfaceView,
   #splitter,
   #resultsInterface {
     position: relative;
   }
-  #joinInterface {
+  #joinInterfaceView {
     flex: 0 0 auto;
     /* only manually resize */
-    width: 75%;
+    width: calc(100% - 1em);
     min-width: 0%;
     max-width: calc(100% - 1em);
     z-index: 1;
@@ -44,7 +44,7 @@ body {
     background-position: center;
     background-size: 8px auto;
     background-repeat: no-repeat;
-    background-color: $darkUiColor;
+    background-color: $lightUiColor;
     cursor: col-resize;
     z-index: 2;
     overflow: hidden;

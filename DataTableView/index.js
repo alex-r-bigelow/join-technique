@@ -1,12 +1,12 @@
 import Handsontable from '../node_modules/handsontable/dist/handsontable.full.js';
 import '../node_modules/handsontable/dist/handsontable.full.css';
-import View from '../View';
+import JoinableView from '../JoinableView';
 
 import template from './template.html';
 import tableIcon from '../img/table.svg';
 import './style.scss';
 
-class DataTableView extends View {
+class DataTableView extends JoinableView {
   constructor () {
     super();
     this.icon = tableIcon;

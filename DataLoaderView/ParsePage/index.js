@@ -12,7 +12,7 @@ class ParsePage extends Page {
     }
   }
   proceed () {
-    this.parentView.joinInterface.openNextView(this.parentView);
+    this.parentView.joinInterfaceView.openNextView(this.parentView);
   }
   get canProceed () {
     return true;

@@ -1,11 +1,11 @@
-import View from '../View';
+import JoinableView from '../JoinableView';
 import MainPage from './MainPage';
 import template from './template.html';
 import './style.scss';
 
 import uploadIcon from '../img/upload.svg';
 
-class DataLoaderView extends View {
+class DataLoaderView extends JoinableView {
   constructor () {
     super();
     this.icon = uploadIcon;

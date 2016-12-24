@@ -19,22 +19,28 @@ let colorScheme = {
 };
 recolorImages(colorScheme);
 
-import JoinInterface from './JoinInterface';
+import JoinInterfaceView from './JoinInterfaceView';
 import DataLoaderView from './DataLoaderView';
 import DataTableView from './DataTableView';
 
-let joinInterface = new JoinInterface(d3.select('#joinInterface'), new DataLoaderView(), new DataLoaderView());
-joinInterface.addView(JoinInterface.LEFT, new DataTableView());
-joinInterface.addView(JoinInterface.RIGHT, new DataTableView());
+class MainPage {
+  constructor () {
+    this.joinInterfaceView = new JoinInterfaceView(new DataLoaderView(), new DataLoaderView());
+    this.joinInterfaceView.addView(JoinInterfaceView.LEFT, new DataTableView());
+    this.joinInterfaceView.addView(JoinInterfaceView.RIGHT, new DataTableView());
 
-function renderViews () {
-  joinInterface.render();
+    jQuery('#joinInterfaceView').resizable({
+      handleSelector: '#splitter',
+      resizeHeight: false,
+      onDragEnd: () => this.renderViews()
+    });
+    window.onresize = () => this.renderViews();
+    this.renderViews();
+  }
+
+  renderViews () {
+    this.joinInterfaceView.render(d3.select('#joinInterfaceView'));
+  }
 }
 
-jQuery('#joinInterface').resizable({
-  handleSelector: '#splitter',
-  resizeHeight: false,
-  onDragEnd: renderViews
-});
-window.onresize = renderViews;
-renderViews();
+window.mainPage = new MainPage();

@@ -1,5 +1,9 @@
-class DataTableModel {
+import JoinableModel from '../JoinableModel';
+
+class DataTableModel extends JoinableModel {
   constructor () {
+    super();
+
     // This is an abstract class; we require that these methods be implemented:
     let requiredMethods = ['nextChunk', 'numChunks'];
     requiredMethods.forEach(m => {
@@ -39,6 +43,20 @@ class DataTableModel {
     this.xmlSettings = {
       xpath: '//'
     };
+  }
+  numItems () {
+    if (this.parsedRecords !== null) {
+      return 0;
+    } else {
+      return this.parsedRecords.length;
+    }
+  }
+  allProperties () {
+    if (this.parsedHeaders === null) {
+      return [];
+    } else {
+      return this.parsedHeaders;
+    }
   }
   get parsedPercentage () {
     if (this.parseProgress === null) {
