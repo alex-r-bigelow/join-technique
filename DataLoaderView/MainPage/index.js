@@ -21,7 +21,15 @@ class MainPage extends Page {
     this.parentView.setPage(new PastePage(this.parentView, this));
   }
   newTable () {
-    let model = new StringDataTableModel('this,is,a,test\n,2,3,\n5,6,,8');
+    let testTable = 'this,is,a,test,to,see,if,the,table,behaves';
+    let ec = testTable.split(',').length - 1;
+    for (let r = 0; r < 200; r += 1) {
+      testTable += '\n' + r;
+      for (let c = 0; c < ec; c += 1) {
+        testTable += ',' + Math.floor(Math.random() * 100);
+      }
+    }
+    let model = new StringDataTableModel(testTable);
     this.parentView.joinInterfaceView.setModel(this.parentView, model);
     this.parentView.joinInterfaceView.openNextView(this.parentView);
   }

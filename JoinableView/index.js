@@ -4,7 +4,9 @@ import missingIcon from '../img/missing.svg';
 class JoinableView extends View {
   constructor () {
     super();
+    // This is an abstract class; subclasses should override this.icon
     this.icon = missingIcon;
+    this.visibleLocations = {};
   }
   get model () {
     if (!this.joinInterfaceView) {
@@ -18,6 +20,7 @@ class JoinableView extends View {
       throw new Error('JoinableView has not been added to JoinInterfaceView');
     } else {
       this.joinInterfaceView.setModel(this, model);
+      this.dirty = true;
     }
   }
 }

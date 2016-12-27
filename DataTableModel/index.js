@@ -246,7 +246,7 @@ class DataTableModel extends JoinableModel {
           // potentially empty strings? AFAIK, handsontable behaves better
           // when they're arrays...
           this.parsedHeaders.forEach((h, i) => {
-            newRecord.push(state.values[i].value);
+            newRecord.push(state.values[i] ? state.values[i].value : '');
           });
           this.parsedRecords.push(newRecord);
           state.values = [];

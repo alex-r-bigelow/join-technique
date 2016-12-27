@@ -1,6 +1,10 @@
+import jQuery from 'jquery';
+import Underscore from 'underscore';
+
 import Handsontable from '../node_modules/handsontable/dist/handsontable.full.js';
 import '../node_modules/handsontable/dist/handsontable.full.css';
 import JoinableView from '../JoinableView';
+import JoinInterfaceView from '../JoinInterfaceView';
 
 import template from './template.html';
 import tableIcon from '../img/table.svg';
@@ -10,6 +14,8 @@ class DataTableView extends JoinableView {
   constructor () {
     super();
     this.icon = tableIcon;
+
+    this.visibleLocations = {};
   }
   render (d3el) {
     if (this.model === null) {
@@ -42,7 +48,7 @@ class DataTableView extends JoinableView {
             return index;
           } else {
             let plugin = this.handsontable.getPlugin('ColumnSorting');
-            let physicalRow = plugin.untranslateRow(index);
+            let physicalRow = plugin.translateRow(index);
             if (physicalRow === undefined) {
               return index;
             } else {
@@ -52,10 +58,20 @@ class DataTableView extends JoinableView {
         },
         manualColumnResize: true,
         manualRowResize: true,
-        contextMenu: true,
+        // contextMenu: true,
         columnSorting: true,
         sortIndicator: true
       });
+
+      // TODO: remove this debugging line
+      window.temphandsontable = this.handsontable;
+
+      this.handsontable.render();
+      this.d3el.select('.ht_master .wtHolder').node()
+        .addEventListener('scroll', Underscore.debounce(() => {
+          this.updateVisibleLocations();
+          this.joinInterfaceView.render();
+        }, 200), { passive: true });
     }
 
     let newSize = this.d3el.select('#table').node().getBoundingClientRect();
@@ -75,7 +91,38 @@ class DataTableView extends JoinableView {
     this.d3el.select('#message')
       .text(message)
       .classed('error', isErrorMessage);
-    this.handsontable.render();
+
+    this.updateVisibleLocations();
+  }
+  updateVisibleLocations () {
+    let side = this.joinInterfaceView.getSide(this);
+    let tableBBox = this.d3el.select('.ht_master .wtHolder').node().getBoundingClientRect();
+    let xPosition = side === JoinInterfaceView.LEFT ? tableBBox.right : tableBBox.left;
+    let rowElements = this.d3el.selectAll('.ht_master .htCore tbody tr');
+    let oldLocations = this.visibleLocations;
+    this.visibleLocations = {};
+    let self = this;
+    rowElements.each(function () {
+      // this refers to the DOM element
+      let index = parseInt(jQuery(this).find('.rowHeader').text());
+      let rowBBox = this.getBoundingClientRect();
+      if (!isNaN(index) && rowBBox.top >= tableBBox.top && rowBBox.bottom <= tableBBox.bottom) {
+        self.visibleLocations[index] = {
+          x: xPosition,
+          y: rowBBox.top + rowBBox.height / 2
+        };
+        // Assess whether anything has actually changed; if it has,
+        // we may need to issue a render call
+        if (index in oldLocations &&
+          oldLocations[index].x === self.visibleLocations[index].x &&
+          oldLocations[index].y === self.visibleLocations[index].y) {
+          delete oldLocations[index];
+        }
+      }
+    });
+    if (Object.keys(oldLocations).length > 0) {
+      this.joinInterfaceView.render();
+    }
   }
 }
 

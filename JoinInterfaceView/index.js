@@ -2,8 +2,10 @@
 import template from './template.html';
 import './style.scss';
 
+import JoinModel from '../JoinModel';
 import View from '../View';
 import JoinableView from '../JoinableView';
+import Overlay from './Overlay';
 
 import hiddenIcon from '../img/hide.svg';
 import visibleIcon from '../img/show.svg';
@@ -11,16 +13,20 @@ import visibleIcon from '../img/show.svg';
 class JoinInterfaceView extends View {
   constructor (defaultLeftView, defaultRightView) {
     super();
-    this.leftModel = null;
+
+    this.joinModel = new JoinModel(null, null);
+
     defaultLeftView.joinInterfaceView = this;
     this.leftViews = [defaultLeftView];
     this.currentLeftView = 0;
     this.showLeftView = true;
-    this.rightModel = null;
+
     defaultRightView.joinInterfaceView = this;
     this.rightViews = [defaultRightView];
     this.currentRightView = 0;
     this.showRightView = true;
+
+    this.overlay = new Overlay(this);
   }
   addView (side, view) {
     view.joinInterfaceView = this;
@@ -46,21 +52,22 @@ class JoinInterfaceView extends View {
       side = this.getSide(side);
     }
     if (side === JoinInterfaceView.LEFT) {
-      this.leftModel = model;
+      this.joinModel.leftModel = model;
     } else if (side === JoinInterfaceView.RIGHT) {
-      this.rightModel = model;
+      this.joinModel.rightModel = model;
     } else {
       throw new Error('Unknown side: ' + side);
     }
+    this.joinModel.purgeAllConnections();
   }
   getModel (side) {
     if (side instanceof JoinableView) {
       side = this.getSide(side);
     }
     if (side === JoinInterfaceView.LEFT) {
-      return this.leftModel;
+      return this.joinModel.leftModel;
     } else if (side === JoinInterfaceView.RIGHT) {
-      return this.rightModel;
+      return this.joinModel.rightModel;
     } else {
       throw new Error('Unknown side: ' + side);
     }
@@ -71,14 +78,36 @@ class JoinInterfaceView extends View {
     }
     if (side === JoinInterfaceView.LEFT) {
       this.currentLeftView = Math.min(this.leftViews.length - 1, this.currentLeftView + 1);
+      // Let the view know that it needs to do a fresh render
+      this.leftViews[this.currentLeftView].dirty = true;
     } else if (side === JoinInterfaceView.RIGHT) {
       this.currentRightView = Math.min(this.rightViews.length - 1, this.currentRightView + 1);
+      // Let the view know that it needs to do a fresh render
+      this.rightViews[this.currentRightView].dirty = true;
     } else {
       throw new Error('Unknown side: ' + side);
     }
-    // Let the view know that it needs to do a fresh render
-    this.leftViews[this.currentLeftView].d3el = null;
     this.render();
+  }
+  getVisibleLocations (side) {
+    if (side instanceof JoinableView) {
+      side = this.getSide(side);
+    }
+    if (side === JoinInterfaceView.LEFT) {
+      if (!this.showLeftView) {
+        return {};
+      } else {
+        return this.leftViews[this.currentLeftView].visibleLocations;
+      }
+    } else if (side === JoinInterfaceView.RIGHT) {
+      if (!this.showRightView) {
+        return {};
+      } else {
+        return this.rightViews[this.currentRightView].visibleLocations;
+      }
+    } else {
+      throw new Error('Unknown side: ' + side);
+    }
   }
   render (d3el) {
     if (!this.hasRenderedTo(d3el)) {
@@ -86,12 +115,12 @@ class JoinInterfaceView extends View {
     }
     // Have to manually update the overlay SVG size
     let bounds = this.d3el.select('#views').node().getBoundingClientRect();
-    this.d3el.select('#overlay')
+    let overlayEl = this.d3el.select('#overlay')
       .attr('width', bounds.width)
       .attr('height', bounds.height);
 
     this.renderEachView();
-    this.renderOverlay();
+    this.overlay.render(overlayEl);
     this.renderFooter();
   }
   renderEachView () {

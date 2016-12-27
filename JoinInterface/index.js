@@ -76,7 +76,7 @@ class JoinInterfaceView {
       throw new Error('Unknown side: ' + side);
     }
     // Let the view know that it needs to do a fresh render
-    this.leftViews[this.currentLeftView].d3el = null;
+    this.leftViews[this.currentLeftView].dirty = true;
     this.render();
   }
   render () {

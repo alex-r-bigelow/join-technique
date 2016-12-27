@@ -38,6 +38,10 @@ $footerSize: 4em;
   left: 0px;
   /* width and height have to be set manually, because it's an SVG element */
   pointer-events: none;
+  z-index: 1000;
+}
+#overlay > * {
+  pointer-events: visible;
 }
 
 #footer {

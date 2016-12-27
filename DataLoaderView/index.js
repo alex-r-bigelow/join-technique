@@ -34,7 +34,7 @@ class DataLoaderView extends JoinableView {
   setPage (page) {
     this.page = page;
     // let the page know that it needs to do a fresh render of the element
-    this.page.d3el = null;
+    this.page.dirty = true;
     // update the whole view
     this.render();
   }
