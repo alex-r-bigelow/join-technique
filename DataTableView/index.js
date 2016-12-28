@@ -86,7 +86,11 @@ class DataTableView extends JoinableView {
       }, 200), { passive: true });
     }
 
-    let newSize = this.d3el.select('#table').node().getBoundingClientRect();
+    let tableEl = this.d3el.select('#table');
+    // temporarily remove the hard-coded with attribute so that the default CSS
+    // styles can tell us how much space we have
+    tableEl.style('width', null);
+    let newSize = tableEl.node().getBoundingClientRect();
     this.handsontable.updateSettings({
       width: newSize.width,
       height: newSize.height
@@ -109,9 +113,33 @@ class DataTableView extends JoinableView {
   updateVisibleLocations () {
     let side = this.joinInterfaceView.getSide(this);
     let tableBBox = this.d3el.select('.ht_master .wtHolder').node().getBoundingClientRect();
-    let xPosition = side === JoinInterfaceView.LEFT ? tableBBox.right : tableBBox.left;
     let rowElements = this.d3el.selectAll('.ht_master .htCore tbody tr');
+
+    // Determine the best x-coordinate
+    let xPosition;
+    let firstRowBBox = rowElements.node().getBoundingClientRect();
+
+    if (side === JoinInterfaceView.LEFT) {
+      // Ideally, we'd like the dot to be just to the right of the row
+      if (firstRowBBox.right < tableBBox.right - 20) {
+        // There's enough space between the right boundary of the table
+        // and the scroll bar; in this situation, we'd like the dot just to the
+        // right of the row (inside the scroll bar)
+        xPosition = firstRowBBox.right + 10;
+      } else {
+        // Not enough space before we hit the scroll bar; put the dot
+        // outside of the scroll bar
+        xPosition = tableBBox.right + 10;
+      }
+    } else {
+      // the left edge is much simpler
+      xPosition = tableBBox.left - 10;
+    }
+
+    // Store the old locations so we can tell if anything changed
     let oldLocations = this.visibleLocations;
+
+    // Figure out our new set of visible locations
     this.visibleLocations = {};
     let self = this;
     rowElements.each(function () {
@@ -134,6 +162,8 @@ class DataTableView extends JoinableView {
         }
       }
     });
+
+    // If something changed, we need to re-render stuff
     if (Object.keys(oldLocations).length > 0) {
       this.joinInterfaceView.render();
     }

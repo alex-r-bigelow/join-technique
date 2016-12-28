@@ -28,6 +28,9 @@ module.exports = {
       jQuery: 'jquery'
     })
   ],
+  node: {
+    fs: 'empty'
+  },
   module: {
     loaders: [
       {

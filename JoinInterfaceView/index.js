@@ -58,7 +58,8 @@ class JoinInterfaceView extends View {
     } else {
       throw new Error('Unknown side: ' + side);
     }
-    this.joinModel.purgeAllConnections();
+    // Clear all connections, and apply the default preset
+    this.joinModel.applyPreset(JoinModel.CONCATENATION);
   }
   getModel (side) {
     if (side instanceof JoinableView) {

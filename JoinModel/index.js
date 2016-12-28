@@ -1,11 +1,17 @@
+import sqlOpToFunction from '../lib/sqlOpToFunction';
+
 class JoinModel {
   constructor (leftModel, rightModel) {
     this.leftModel = leftModel;
     this.rightModel = rightModel;
     this.connectionsFromLeft = {};
     this.connectionsFromRight = {};
+    this.currentPreset = JoinModel.CONCATENATION;
+    this.joinOnTestFunction = null;
   }
-  purgeAllConnections () {
+  applyPreset (preset, onCondition) {
+    this.currentPreset = preset;
+    this.joinOnTestFunction = onCondition ? sqlOpToFunction(onCondition) : null;
     this.connectionsFromLeft = {};
     this.connectionsFromRight = {};
   }
@@ -33,6 +39,27 @@ class JoinModel {
       }
     }
   }
+  presetDefinesConnection (leftIndex, rightIndex) {
+    switch (this.currentPreset) {
+      case JoinModel.EQUIJOIN:
+      case JoinModel.THETA_JOIN:
+        return Promise.all([this.leftModel.getItem(leftIndex), this.rightModel.getItem(rightIndex)])
+          .then((leftItem, rightItem) => {
+            let rows = {};
+            rows[this.leftModel.name] = leftItem;
+            rows[this.rightModel.name] = rightItem;
+            return this.joinOnTestFunction(rows);
+          });
+      case JoinModel.CROSS_PRODUCT: return Promise.resolve(true);
+      case JoinModel.ORDERED_JOIN: return Promise.resolve(leftIndex === rightIndex);
+      case JoinModel.CONCATENATION: return Promise.resolve(false);
+    }
+  }
 }
+JoinModel.EQUIJOIN = 'EQUIJOIN';
+JoinModel.THETA_JOIN = 'THETA_JOIN';
+JoinModel.CROSS_PRODUCT = 'CROSS_PRODUCT';
+JoinModel.ORDERED_JOIN = 'ORDERED_JOIN';
+JoinModel.CONCATENATION = 'CONCATENATION';
 
 export default JoinModel;

@@ -44,11 +44,18 @@ class DataTableModel extends JoinableModel {
       xpath: '//'
     };
   }
-  numItems () {
-    if (this.parsedRecords !== null) {
+  numTotalItems () {
+    if (this.parsedRecords === null) {
       return 0;
     } else {
       return this.parsedRecords.length;
+    }
+  }
+  getItem (index) {
+    if (this.parsedRecords === null) {
+      return undefined;
+    } else {
+      return this.parsedRecords[index];
     }
   }
   allProperties () {
