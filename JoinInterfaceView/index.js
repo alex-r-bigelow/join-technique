@@ -109,6 +109,12 @@ class JoinInterfaceView extends View {
       throw new Error('Unknown side: ' + side);
     }
   }
+  scrollView (side, vector) {
+    if (side instanceof JoinableView) {
+      side = this.getSide(side);
+    }
+    this.overlay.scrollView(side, vector);
+  }
   render (d3el) {
     if (!this.hasRenderedTo(d3el)) {
       this.d3el.html(template);

@@ -67,11 +67,23 @@ class DataTableView extends JoinableView {
       window.temphandsontable = this.handsontable;
 
       this.handsontable.render();
-      this.d3el.select('.ht_master .wtHolder').node()
-        .addEventListener('scroll', Underscore.debounce(() => {
-          this.updateVisibleLocations();
-          this.joinInterfaceView.render();
-        }, 200), { passive: true });
+      let scrollContainer = this.d3el.select('.ht_master .wtHolder').node();
+      scrollContainer.addEventListener('scroll', () => {
+        // Shallow scroll motion effect that needs to happen with the interaction
+        if (this.initialScrollTop === undefined) {
+          this.initialScrollTop = scrollContainer.scrollTop;
+        }
+        this.joinInterfaceView.scrollView(this, {
+          dx: 0,
+          dy: this.initialScrollTop - scrollContainer.scrollTop
+        });
+      }, { passive: true });
+      scrollContainer.addEventListener('scroll', Underscore.debounce(() => {
+        // Once points have been moved, add / remove / update them
+        this.updateVisibleLocations();
+        this.joinInterfaceView.render();
+        this.initialScrollTop = undefined;
+      }, 200), { passive: true });
     }
 
     let newSize = this.d3el.select('#table').node().getBoundingClientRect();
@@ -106,16 +118,18 @@ class DataTableView extends JoinableView {
       // this refers to the DOM element
       let index = parseInt(jQuery(this).find('.rowHeader').text());
       let rowBBox = this.getBoundingClientRect();
-      if (!isNaN(index) && rowBBox.top >= tableBBox.top && rowBBox.bottom <= tableBBox.bottom) {
+      if (!isNaN(index)) {
         self.visibleLocations[index] = {
           x: xPosition,
-          y: rowBBox.top + rowBBox.height / 2
+          y: rowBBox.top + rowBBox.height / 2,
+          transitioning: rowBBox.top < tableBBox.top || rowBBox.bottom > tableBBox.bottom
         };
         // Assess whether anything has actually changed; if it has,
         // we may need to issue a render call
         if (index in oldLocations &&
           oldLocations[index].x === self.visibleLocations[index].x &&
-          oldLocations[index].y === self.visibleLocations[index].y) {
+          oldLocations[index].y === self.visibleLocations[index].y &&
+          oldLocations[index].transitioning === self.visibleLocations[index].transitioning) {
           delete oldLocations[index];
         }
       }
