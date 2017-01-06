@@ -58,11 +58,8 @@ class DataLoaderView extends JoinableView {
       // The file is small enough to read into memory... so actually create
       // a string table instead
       let reader = new window.FileReader();
-      reader.onload = fileContents => {
-        let MixedClass = MIME_TO_MIXIN[fileObj.type](StringTable);
-        let model = new MixedClass(fileObj.name, fileContents);
-        this.joinInterfaceView.setModel(this, model);
-        this.setPage(new ParsePage(this, this));
+      reader.onload = loadEvent => {
+        this.loadString(fileObj.name, loadEvent.target.result, fileObj.type);
       };
       reader.readAsText(fileObj);
     }
