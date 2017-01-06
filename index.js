@@ -1,8 +1,9 @@
 import * as d3 from './lib/d3.min.js';
 import jQuery from 'jquery';
 import 'jquery-resizable-dom';
-import './layout.scss';
-import './fonts.scss';
+import './styles/layout.scss';
+import './styles/fonts.scss';
+import './styles/uihacks.scss';
 
 // Make d3 and jQuery available on the console
 window.d3 = d3;
@@ -19,11 +20,11 @@ let colorScheme = {
 };
 recolorImages(colorScheme);
 
-import JoinInterfaceView from './JoinInterfaceView';
-import DataLoaderView from './DataLoaderView';
-import DataTableView from './DataTableView';
+import JoinInterfaceView from './views/JoinInterfaceView';
+import DataLoaderView from './views/DataLoaderView';
+import DataTableView from './views/DataTableView';
 
-class MainPage {
+class Tool {
   constructor () {
     this.joinInterfaceView = new JoinInterfaceView(new DataLoaderView(), new DataLoaderView());
     this.joinInterfaceView.addView(JoinInterfaceView.LEFT, new DataTableView());
@@ -43,4 +44,4 @@ class MainPage {
   }
 }
 
-window.mainPage = new MainPage();
+window.tool = new Tool();

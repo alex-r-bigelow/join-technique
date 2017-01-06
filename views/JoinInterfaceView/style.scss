@@ -1,0 +1,85 @@
+@import '../../styles/colors.scss';
+$footerSize: 4em;
+
+#views {
+  position: absolute;
+  top: 1em;
+  left: 0px;
+  right: 0px;
+  bottom: $footerSize;
+
+  #leftView, #rightView {
+    position: absolute;
+    top: 0px;
+    width: calc(33% - 1em);
+    bottom: 0px;
+    overflow: auto;
+  }
+  #leftView {
+    left: 1em;
+  }
+  #rightView {
+    right: 1em;
+  }
+  #rightView.collapsed,
+  #leftView.collapsed {
+    display: none;
+  }
+  #rightView.focused,
+  #leftView.focused {
+    left: 1em;
+    width: calc(100% - 2em);
+  }
+}
+
+#overlay {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  /* width and height have to be set manually, because it's an SVG element */
+  pointer-events: none;
+  z-index: 1000;
+}
+#overlay > * {
+  pointer-events: visible;
+}
+
+#footer {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  height: $footerSize;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: stretch;
+
+  div {
+    position: relative;
+
+    img {
+      position: relative;
+      top: calc(50% - 0.75em);
+      width: 1.5em;
+      height: 1.5em;
+      padding: 0em 0.25em;
+      cursor: pointer;
+      border: 1px solid transparent;
+      filter: imgColorFilter($darkUiColor);
+    }
+    img.inactive {
+      filter: imgColorFilter($lightUiColor);
+    }
+    img:hover {
+      border: 1px solid #cccccc;
+    }
+  }
+
+  #leftButtonContainer {
+    margin-left: 0.25em;
+  }
+  #rightButtonContainer {
+    margin-right: 0.25em;
+  }
+}

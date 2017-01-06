@@ -1,0 +1,44 @@
+@import './colors.scss';
+@import './fonts.scss';
+
+a.button,
+ul.selectMenu,
+ol.selectMenu {
+  padding: 0.5em 0.5em 0.25em 0.5em;
+  border: 1px solid $darkUiColor;
+  background-color: $darkUiColor;
+  color: $pageBackgroundColor;
+  font-family: $sansFont;
+  font-weight: $sansWeight;
+  white-space: nowrap;
+  line-height: 2em;
+}
+a.button:hover,
+ul.selectMenu:hover,
+ol.selectMenu:hover {
+  color: $darkUiColor;
+  background-color: $pageBackgroundColor;
+}
+a.button.disabled,
+a.button.disabled:hover,
+ul.selectMenu.disabled,
+ul.selectMenu.disabled:hover,
+ol.selectMenu.disabled,
+ol.selectMenu.disabled:hover {
+  cursor: default;
+  border: 1px solid $lightUiColor;
+  background-color: $lightUiColor;
+  color: $pageBackgroundColor;
+}
+
+ul.selectMenu,
+ol.selectMenu {
+  list-style: none;
+
+  li {
+    display: none;
+  }
+  li.selected {
+    display: block;
+  }
+}
