@@ -1,4 +1,6 @@
-A demonstration of a technique for performing joins.
+A tool to interactively visualize and perform a join on two tables.
+
+[Try it out](http://join-technique.github.io)
 
 Setup:
 ======

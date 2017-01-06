@@ -9,7 +9,7 @@ module.exports = {
 
   output: {
     // Where to build results
-    path: './build',
+    path: './docs',
 
     // Filename to use in HTML
     filename: 'webpack-bundle.js'
@@ -18,7 +18,7 @@ module.exports = {
   devtool: 'cheap-source-map',
   plugins: [
     new CleanWebpackPlugin([
-      './build'
+      './docs'
     ]),
     new HtmlWebpackPlugin({
       template: 'index.html', // Load a custom template
