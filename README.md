@@ -1,6 +1,6 @@
 A tool to interactively visualize and perform a join on two tables.
 
-[Try it out](http://join-technique.github.io)
+[Try it out](https://alex-r-bigelow.github.io/join-technique)
 
 Setup:
 ======
