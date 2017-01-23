@@ -6,6 +6,7 @@ import JoinModel from '../../models/JoinModel';
 import View from '../../lib/View';
 import JoinableView from '../JoinableView';
 import Overlay from './Overlay';
+import makeSelectMenu from '../../lib/makeSelectMenu';
 
 import hiddenIcon from '../../img/hide.svg';
 import visibleIcon from '../../img/show.svg';
@@ -13,6 +14,10 @@ import visibleIcon from '../../img/show.svg';
 class JoinInterfaceView extends View {
   constructor (defaultLeftView, defaultRightView) {
     super();
+
+    // Our draw loop can potentially trigger an expensive model adjustment, so
+    // we really want to limit the times that it's double-called
+    this.debounceWait = 1000;
 
     this.joinModel = new JoinModel(null, null);
 
@@ -59,7 +64,7 @@ class JoinInterfaceView extends View {
       throw new Error('Unknown side: ' + side);
     }
     // Clear all connections, and apply the default preset
-    this.joinModel.applyPreset(JoinModel.CONCATENATION);
+    this.joinModel.changePreset(JoinModel.CONCATENATION);
   }
   getModel (side) {
     if (side instanceof JoinableView) {
@@ -110,6 +115,9 @@ class JoinInterfaceView extends View {
       throw new Error('Unknown side: ' + side);
     }
   }
+  getVisibleConnections () {
+    return this.joinModel.customConnections.concat(this.joinModel.presetConnections.currentContents);
+  }
   scrollView (side, vector) {
     if (side instanceof JoinableView) {
       side = this.getSide(side);
@@ -118,6 +126,12 @@ class JoinInterfaceView extends View {
   }
   setup (d3el) {
     d3el.html(template);
+    makeSelectMenu(d3el.select('.selectMenu').node());
+    let self = this;
+    d3el.select('.selectMenu').on('change', function () {
+      // this refers to the DOM element
+      self.joinModel.changePreset(this.value);
+    });
   }
   draw (d3el) {
     // Have to manually update the overlay SVG size

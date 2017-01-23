@@ -120,6 +120,7 @@ class DataTableView extends JoinableView {
   updateVisibleLocations (d3el) {
     let side = this.joinInterfaceView.getSide(this);
     let tableBBox = d3el.select('.ht_master .wtHolder').node().getBoundingClientRect();
+    let headerBBox = d3el.select('.ht_clone_top .htCore thead').node().getBoundingClientRect();
     let rowElements = d3el.selectAll('.ht_master .htCore tbody tr');
 
     let xPosition;
@@ -156,17 +157,20 @@ class DataTableView extends JoinableView {
       let index = parseInt(jQuery(this).find('.rowHeader').text());
       let rowBBox = this.getBoundingClientRect();
       if (!isNaN(index)) {
-        self.visibleLocations[index] = {
+        let location = {
           x: xPosition,
-          y: rowBBox.top + rowBBox.height / 2,
-          transitioning: rowBBox.top < tableBBox.top || rowBBox.bottom > tableBBox.bottom
+          y: rowBBox.top + rowBBox.height / 2
         };
+        // Rows that don't have their center point visible should start
+        // disappearing
+        location.transitioning = location.y < headerBBox.bottom || location.y > tableBBox.bottom;
+        self.visibleLocations[index] = location;
         // Assess whether anything has actually changed; if it has,
         // we may need to issue a render call
         if (index in oldLocations &&
-          oldLocations[index].x === self.visibleLocations[index].x &&
-          oldLocations[index].y === self.visibleLocations[index].y &&
-          oldLocations[index].transitioning === self.visibleLocations[index].transitioning) {
+          oldLocations[index].x === location.x &&
+          oldLocations[index].y === location.y &&
+          oldLocations[index].transitioning === location.transitioning) {
           delete oldLocations[index];
         }
       }

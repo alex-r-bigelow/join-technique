@@ -14,10 +14,10 @@ class StringTable extends DataTableModel {
 
     // A string table is small enough that it can fit in memory... so pre-parse the whole thing
     this.textContent = textContent;
-    this.rows.setPopulateFunction((pop, fin, pur) => {
+    this.rows.setPopulateFunction(incArr => {
       let chunkState = this.parseChunk(this.textContent);
-      pop(chunkState.parsedRecords);
-      fin();
+      incArr.populate(chunkState.parsedRecords);
+      incArr.finish();
     }).then(() => {
       this.rows.startPopulating();
     });

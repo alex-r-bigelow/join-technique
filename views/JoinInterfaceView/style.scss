@@ -32,6 +32,35 @@ $footerSize: 4em;
   }
 }
 
+#presetSettings {
+  position: absolute;
+  top: 0px;
+  left: calc(33% + 2em);
+  width: calc(33% - 3.5em);
+  li {
+    line-height: 1em;
+    img {
+      display: none;
+    }
+    span {
+      position: relative;
+      bottom: 0em;
+    }
+  }
+  .selectMenu.expanded {
+    li {
+      img {
+        display: inline-block;
+        width: 6em;
+        height: 6em;
+      }
+      span {
+        bottom: 2.5em;
+      }
+    }
+  }
+}
+
 #overlay {
   position: absolute;
   top: 0px;

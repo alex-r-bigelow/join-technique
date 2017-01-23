@@ -18,7 +18,7 @@ class FileTable extends DataTableModel {
     this.currentByteOffset = 0;
     this.rowOffsets = {};
 
-    this.rows.setPopulateFunction((pop, fin, pur) => {
+    this.rows.setPopulateFunction(incArr => {
       // Figure out what the last complete row number was
       let lastRowNumber = this.rows.currentContents.length + (this.rowOffsets[this.currentOffset] || 0);
       // Get the next chunk of data
