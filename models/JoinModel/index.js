@@ -37,15 +37,17 @@ class JoinModel extends Model {
       this.rightConnectionStatus = JoinModel.STATUS.COMPUTING;
 
       function initLookup (olddetails, indices) {
-        olddetails = olddetails || {};
+        // TODO: keep information from paused counting passes
+        // olddetails = olddetails || {};
         let details = {};
-        indices.forEach(globalIndex => {
+        indices.forEach((globalIndex, localIndex) => {
           details[globalIndex] = {
             visiblePresetConnectionKeys: [],
             totalConnections: 0,
             stillCounting: true,
             navigationOffsets: [],
-            scannedRanges: []
+            scannedRanges: [],
+            localIndex
           };
         });
         return details;

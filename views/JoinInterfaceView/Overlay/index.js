@@ -47,15 +47,76 @@ class Overlay extends View {
     points.select('text')
       .text(d => d.details.totalConnections);
   }
-  drawLines (d3el, items, commonTransition) {
-    // Draw the preset connections
-    let connections = Object.keys(this.joinInterfaceView.joinModel.visiblePresetConnections).filter(key => {
-      return !this.joinInterfaceView.joinModel.customRemovals[key];
+  drawLines (d3el, leftItems, rightItems, commonTransition) {
+    let joinModel = this.joinInterfaceView.joinModel;
+
+    // Get a list of the visible preset connections + the customizations
+    let connections = Object.keys(joinModel.visiblePresetConnections).filter(key => {
+      return !joinModel.customRemovals[key];
     });
-    connections = connections.concat(Object.keys(this.joinInterfaceView.joinModel.customConnections));
+    connections = connections.concat(Object.keys(joinModel.customConnections));
+
+    // Get rid of lines that should be leaving
+    connections = connections.filter(d => {
+      let [leftGlobalIndex, rightGlobalIndex] = d.split('_');
+      let leftLocalIndex = joinModel.leftLookup[leftGlobalIndex].localIndex;
+      let rightLocalIndex = joinModel.rightLookup[rightGlobalIndex].localIndex;
+      return !leftItems[leftLocalIndex].location.transitioning &&
+             !rightItems[rightLocalIndex].location.transitioning;
+    });
+
+    // Add at most one line for items that have no visible connections (if and
+    // only if they have an offset)
+    let connectedLeftIndices = {};
+    let connectedRightIndices = {};
+    connections.forEach(d => {
+      let [l, r] = d.split('_');
+      connectedLeftIndices[l] = true;
+      connectedRightIndices[r] = true;
+    });
+    leftItems.forEach(item => {
+      if (!connectedLeftIndices[item.globalIndex] && item.details.navigationOffsets.length > 0) {
+        connections.push(item.globalIndex + '_' + item.details.navigationOffsets[0]);
+      }
+    });
+    rightItems.forEach(item => {
+      if (!connectedRightIndices[item.globalIndex] && item.details.navigationOffsets.length > 0) {
+        connections.push(item.details.navigationOffsets[0] + '_' + item.globalIndex);
+      }
+    });
+
+    // common function for drawing the path between points
+    let drawPath = d => {
+      let [leftGlobalIndex, rightGlobalIndex] = d.split('_');
+      let leftLocalIndex, rightLocalIndex;
+      if (!joinModel.leftLookup[leftGlobalIndex]) {
+        rightLocalIndex = joinModel.rightLookup[rightGlobalIndex].localIndex;
+        // just connect the right end
+        return 'M' + (rightItems[rightLocalIndex].location.x - 2 * this.emSize) + ',' +
+                     rightItems[rightLocalIndex].location.y +
+               'L' + rightItems[rightLocalIndex].location.x + ',' +
+                     rightItems[rightLocalIndex].location.y;
+      } else {
+        leftLocalIndex = joinModel.leftLookup[leftGlobalIndex].localIndex;
+        if (!joinModel.rightLookup[rightGlobalIndex]) {
+          // just connect the left end
+          return 'M' + leftItems[leftLocalIndex].location.x + ',' +
+                       leftItems[leftLocalIndex].location.y +
+                 'L' + (leftItems[leftLocalIndex].location.x + 2 * this.emSize) + ',' +
+                       leftItems[leftLocalIndex].location.y;
+        } else {
+          rightLocalIndex = joinModel.rightLookup[rightGlobalIndex].localIndex;
+          // connect both ends
+          return 'M' + leftItems[leftLocalIndex].location.x + ',' +
+                       leftItems[leftLocalIndex].location.y +
+                 'L' + rightItems[rightLocalIndex].location.x + ',' +
+                       rightItems[rightLocalIndex].location.y;
+        }
+      }
+    };
 
     let lines = d3el.select('#lines').selectAll('.connection')
-      .data(connections);
+      .data(connections, d => d);
 
     lines.exit()
       .transition(commonTransition)
@@ -66,51 +127,27 @@ class Overlay extends View {
       .classed('connection', true)
       .style('opacity', 0);
 
-    linesEnter.append('path');
+    linesEnter.append('path')
+      .attr('d', drawPath);
 
     lines = linesEnter.merge(lines);
     lines.transition(commonTransition)
-      .style('opacity', 1);
-
-    lines.selectAll('path').attr('d', d => {
-      let [leftKey, rightKey] = d.split('_');
-      if (items[JoinInterfaceView.LEFT][leftKey]) {
-        if (items[JoinInterfaceView.RIGHT][rightKey]) {
-          // Connect both ends
-          return 'M' + items[JoinInterfaceView.LEFT][leftKey].location.x + ',' +
-                       items[JoinInterfaceView.LEFT][leftKey].location.y +
-                 'L' + items[JoinInterfaceView.RIGHT][rightKey].location.x + ',' +
-                       items[JoinInterfaceView.RIGHT][rightKey].location.y;
-        } else {
-          // Just connect the left end
-          return 'M' + items[JoinInterfaceView.LEFT][leftKey].location.x + ',' +
-                       items[JoinInterfaceView.LEFT][leftKey].location.y +
-                 'L' + (items[JoinInterfaceView.LEFT][leftKey].location.x + 2 * this.emSize) + ',' +
-                       items[JoinInterfaceView.LEFT][leftKey].location.y;
-        }
-      } else {
-        // Just connect the right end
-        return 'M' + items[JoinInterfaceView.RIGHT][rightKey].location.x + ',' +
-                     items[JoinInterfaceView.RIGHT][rightKey].location.y +
-               'L' + (items[JoinInterfaceView.RIGHT][rightKey].location.x - 2 * this.emSize) + ',' +
-                     items[JoinInterfaceView.RIGHT][rightKey].location.y;
-      }
-    });
+      .style('opacity', 1)
+      .select('path').attr('d', drawPath);
   }
   draw (d3el) {
-    // Common transition object to coordiante all the animation
+    // Common transition objects to coordiante all the animation
     let t = d3.transition()
-      .duration(1000);
+      .duration(500);
 
     // Draw the dots on either side
-    let allItems = {};
-    [JoinInterfaceView.LEFT, JoinInterfaceView.RIGHT].forEach(side => {
-      allItems[side] = this.joinInterfaceView.getVisibleItemDetails(side);
-      this.drawPoints(d3el, side, allItems[side], t);
-    });
+    let leftItems = this.joinInterfaceView.getVisibleItemDetails(JoinInterfaceView.LEFT);
+    this.drawPoints(d3el, JoinInterfaceView.LEFT, leftItems, t);
+    let rightItems = this.joinInterfaceView.getVisibleItemDetails(JoinInterfaceView.RIGHT);
+    this.drawPoints(d3el, JoinInterfaceView.RIGHT, rightItems, t);
 
     // Draw the lines
-    this.drawLines(d3el, allItems, t);
+    this.drawLines(d3el, leftItems, rightItems, t);
   }
   scrollView (side, vector) {
     // Cheaply just translate the scrolled group instead of redrawing the points; this will be removed
