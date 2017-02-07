@@ -67,11 +67,13 @@ $footerSize: 4em;
   left: 0px;
   /* width and height have to be set manually, because it's an SVG element */
   pointer-events: none;
-  z-index: 1000;
 
   .point {
+    cursor: pointer;
+
     circle {
       fill: $darkUiColor;
+      stroke: $darkUiColor;
     }
     text {
       text-anchor: middle;
@@ -80,6 +82,23 @@ $footerSize: 4em;
   }
   .point.stillCounting circle {
     fill: $lightUiColor;
+    stroke: $lightUiColor;
+  }
+  .point:hover {
+    circle {
+      fill: $pageBackgroundColor;
+    }
+    text {
+      fill: $darkUiColor;
+    }
+  }
+  .point:hover.stillCounting {
+    circle {
+      fill: $pageBackgroundColor;
+    }
+    text {
+      fill: $lightUiColor;
+    }
   }
 
   .connection path {

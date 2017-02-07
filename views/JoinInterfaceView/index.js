@@ -15,10 +15,6 @@ class JoinInterfaceView extends View {
   constructor (defaultLeftView, defaultRightView) {
     super();
 
-    // Our draw loop can potentially trigger an expensive model adjustment, so
-    // we really want to limit the times that it's double-called
-    this.debounceWait = 1000;
-
     this.joinModel = new JoinModel(null, null);
     this.joinModel.on('update', () => {
       this.render();

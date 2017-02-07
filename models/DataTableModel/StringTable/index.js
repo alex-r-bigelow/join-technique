@@ -20,7 +20,14 @@ class StringTable extends DataTableModel {
     // have the parsing settings from the mixin in the constructor. So we
     // pre-parse the whole thing lazily when the contents are needed
     if (!this._rows) {
-      this._rows = this.parseChunk(this.textContent).parsedRecords;
+      let temp = this.parseChunk(this.textContent);
+      this._rows = temp.parsedRecords;
+      // the last record is never included in case the end of the chunk isn't
+      // actually the end of the file (and maybe the next chunk contains a few
+      // stray characters belonging to the previous line). So we have to add the
+      // last record at this level, because only here do we know for sure that
+      // the whole document has been processed
+      this._rows.push(temp.values.map(v => v.value));
     }
     return this._rows;
   }
