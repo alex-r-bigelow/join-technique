@@ -132,19 +132,19 @@ class DataTableView extends JoinableView {
 
       if (side === JoinInterfaceView.LEFT) {
         // Ideally, we'd like the dot to be just to the right of the row
-        if (firstRowBBox.right < tableBBox.right - 20) {
+        if (firstRowBBox.right < tableBBox.right - 2 * this.emSize) {
           // There's enough space between the right boundary of the table
           // and the scroll bar; in this situation, we'd like the dot just to the
           // right of the row (inside the scroll bar)
-          xPosition = firstRowBBox.right + 10;
+          xPosition = firstRowBBox.right + this.emSize;
         } else {
           // Not enough space before we hit the scroll bar; put the dot
           // outside of the scroll bar
-          xPosition = tableBBox.right + 10;
+          xPosition = tableBBox.right + this.emSize;
         }
       } else {
         // the left edge is much simpler
-        xPosition = tableBBox.left - 10;
+        xPosition = tableBBox.left - this.emSize;
       }
     }
 
@@ -158,7 +158,6 @@ class DataTableView extends JoinableView {
     rowElements.each(function () {
       // this refers to the DOM element
       let index = parseInt(jQuery(this).find('.rowHeader').text());
-      self.globalIndices.push(index);
       let rowBBox = this.getBoundingClientRect();
       if (!isNaN(index)) {
         let location = {
@@ -169,6 +168,9 @@ class DataTableView extends JoinableView {
         // disappearing
         location.transitioning = location.y < headerBBox.bottom || location.y > tableBBox.bottom;
         self.visibleLocations[index] = location;
+        if (!location.transitioning) {
+          self.globalIndices.push(index);
+        }
         // Assess whether anything has actually changed; if it has,
         // we may need to issue a render call
         if (index in oldLocations &&

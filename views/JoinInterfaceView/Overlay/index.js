@@ -34,13 +34,18 @@ class Overlay extends View {
       .classed('point', true)
       .style('opacity', 0);
     pointsEnter.append('circle')
-      .attr('r', 5);
+      .attr('r', 0.65 * this.emSize);
+    pointsEnter.append('text')
+      .attr('y', 0.35 * this.emSize);
 
     // Move all points where they need to be / animate everything
     points = pointsEnter.merge(points);
     points.attr('transform', d => 'translate(' + d.location.x + ',' + d.location.y + ')')
+      .classed('stillCounting', d => d.details.stillCounting)
       .transition(commonTransition)
       .style('opacity', 1);
+    points.select('text')
+      .text(d => d.details.totalConnections);
   }
   drawLines (d3el, items, commonTransition) {
     // Draw the preset connections

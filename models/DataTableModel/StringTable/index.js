@@ -25,22 +25,30 @@ class StringTable extends DataTableModel {
     return this._rows;
   }
   fullScan (callback) {
-    callback({
-      data: this.rows,
-      globalStartIndex: 0,
-      globalEndIndex: this.rows.length
+    return new Promise((resolve, reject) => {
+      callback({
+        data: this.rows,
+        globalStartIndex: 0,
+        globalEndIndex: this.rows.length
+      });
+      resolve();
     });
   }
   getNativeIndex (i) {
     return i;
   }
   getItems (indices) {
-    return new Promise((resolve, reject) => {
+    // force the lazy evaluation to happen now, or the allProperties() promise
+    // will never be resolved
+    let rows = this.rows;
+    return this.allProperties().then(properties => {
       let results = [];
       indices.forEach(index => {
-        results.push(this.rows[index]);
+        let item = {};
+        properties.forEach((p, i) => { item[p] = rows[index][i]; });
+        results.push(item);
       });
-      resolve(results);
+      return results;
     });
   }
   numTotalItems () {

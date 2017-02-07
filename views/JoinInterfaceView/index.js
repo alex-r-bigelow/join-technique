@@ -105,8 +105,8 @@ class JoinInterfaceView extends View {
     this.render();
   }
   updateVisibleItems () {
-    let leftIndices = this.showLeftView ? this.leftViews[this.currentLeftView].globalIndices : {};
-    let rightIndices = this.showRightView ? this.rightViews[this.currentRightView].globalIndices : {};
+    let leftIndices = this.showLeftView ? this.leftViews[this.currentLeftView].globalIndices : [];
+    let rightIndices = this.showRightView ? this.rightViews[this.currentRightView].globalIndices : [];
     this.joinModel.changeFocusItems(leftIndices, rightIndices);
   }
   getVisibleItemDetails (side) {
