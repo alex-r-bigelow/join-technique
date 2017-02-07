@@ -209,87 +209,95 @@ class JoinModel extends Model {
       };
     }
     let resultPromise;
-    switch (this.currentPreset) {
-      case JoinModel.PRESETS.EQUIJOIN:
-      case JoinModel.PRESETS.THETA_JOIN:
-        // Attribute-based presets require a full table scan
-        resultPromise = oppositeModel.fullScan(chunk => {
-          // TODO: do this behind the scenes in a web worker so it doesn't lock up the UI
-          chunk.data.forEach((oppItem, localOppIndex) => {
-            let globalOppIndex = localOppIndex + chunk.globalStartIndex;
-            indices.forEach((globalIndex, localIndex) => {
-              let itemsToCompare = {};
-              itemsToCompare[modelName] = {
-                index: globalIndex,
-                item: items[localIndex]
-              };
-              itemsToCompare[oppositeModel.name] = {
-                index: globalOppIndex,
-                item: oppItem
-              };
-              let details = lookup[globalIndex];
-              if (!this.indexInRanges(globalOppIndex, details.scannedRanges) &&
-                  this.onConditionFunc(itemsToCompare)) {
-                details.totalConnections += 1;
-                if (details.navigationOffsets.length < NUM_NAVIGATION_OFFSETS) {
-                  details.navigationOffsets.push(globalOppIndex);
+    if (oppositeModel === null) {
+      // okay, there are no connections to count, but one side at least should
+      // be marked as finished
+      resultPromise = Promise.resolve();
+    } else {
+      switch (this.currentPreset) {
+        case JoinModel.PRESETS.EQUIJOIN:
+        case JoinModel.PRESETS.THETA_JOIN:
+          // Attribute-based presets require a full table scan
+          resultPromise = oppositeModel.fullScan(chunk => {
+            // TODO: do this behind the scenes in a web worker so it doesn't lock up the UI
+            chunk.data.forEach((oppItem, localOppIndex) => {
+              let globalOppIndex = localOppIndex + chunk.globalStartIndex;
+              indices.forEach((globalIndex, localIndex) => {
+                let itemsToCompare = {};
+                itemsToCompare[modelName] = {
+                  index: globalIndex,
+                  item: items[localIndex]
+                };
+                itemsToCompare[oppositeModel.name] = {
+                  index: globalOppIndex,
+                  item: oppItem
+                };
+                let details = lookup[globalIndex];
+                if (!this.indexInRanges(globalOppIndex, details.scannedRanges) &&
+                    this.onConditionFunc(itemsToCompare)) {
+                  details.totalConnections += 1;
+                  if (details.navigationOffsets.length < NUM_NAVIGATION_OFFSETS) {
+                    details.navigationOffsets.push(globalOppIndex);
+                  }
                 }
-              }
+              });
+            });
+            // Incrementally update the interface after each chunk has been processed
+            this.trigger('update');
+          });
+          break;
+        case JoinModel.PRESETS.CROSS_PRODUCT:
+          // We already know the total count (the size of all items in the opposite set)
+          resultPromise = oppositeModel.numTotalItems().then(count => {
+            indices.forEach((globalIndex, localIndex) => {
+              let details = lookup[globalIndex];
+              details.totalConnections = count;
+              details.navigationOffsets = []; // including offsets is kind of pointless, so don't bother
             });
           });
-          // Incrementally update the interface after each chunk has been processed
-          this.trigger('update');
-        });
-        break;
-      case JoinModel.PRESETS.CROSS_PRODUCT:
-        // We already know the total count (the size of all items in the opposite set)
-        resultPromise = oppositeModel.numTotalItems().then(count => {
-          indices.forEach((globalIndex, localIndex) => {
-            let details = lookup[globalIndex];
-            details.totalConnections = count;
-            details.navigationOffsets = []; // including offsets is kind of pointless, so don't bother
+          break;
+        case JoinModel.PRESETS.ORDERED_JOIN:
+          // We already know the total count (1), and which connection to jump to just
+          // by the global index number
+          resultPromise = new Promise((resolve, reject) => {
+            indices.forEach((globalIndex, localIndex) => {
+              let details = lookup[globalIndex];
+              details.totalConnections = 1;
+              details.navigationOffsets = [globalIndex];
+            });
+            resolve();
           });
+          break;
+        case JoinModel.PRESETS.CONCATENATION:
+          // There are no connections; numPresetConnections and navigationOffsets are already
+          // correct (0 and empty)
+          resultPromise = Promise.resolve();
+          break;
+        default:
+          throw new Error('Unknown preset: ' + this.currentPreset);
+      }
+      resultPromise = resultPromise.then(() => {
+        // Run through the custom removals and additions to update the totals
+        Object.keys(this.customRemovals).forEach(k => {
+          k = extractIndices(k);
+          let details = lookup[k.globalIndex];
+          details.totalConnections -= 1;
+          let offsetIndex = details.navigationOffsets.indexOf(k.globalOppIndex);
+          if (offsetIndex !== -1) {
+            details.navigationOffsets.splice(offsetIndex, 1);
+          }
         });
-        break;
-      case JoinModel.PRESETS.ORDERED_JOIN:
-        // We already know the total count (1), and which connection to jump to just
-        // by the global index number
-        resultPromise = new Promise((resolve, reject) => {
-          indices.forEach((globalIndex, localIndex) => {
-            let details = lookup[globalIndex];
-            details.totalConnections = 1;
-            details.navigationOffsets = [globalIndex];
-          });
-          resolve();
+        Object.keys(this.customConnections).forEach(k => {
+          k = extractIndices(k);
+          let details = lookup[k.globalIndex];
+          details.totalConnections += 1;
+          if (details.navigationOffsets.length < NUM_NAVIGATION_OFFSETS) {
+            details.navigationOffsets.push(k.globalOppIndex);
+          }
         });
-        break;
-      case JoinModel.PRESETS.CONCATENATION:
-        // There are no connections; numPresetConnections and navigationOffsets are already
-        // correct (0 and empty)
-        resultPromise = Promise.resolve();
-        break;
-      default:
-        throw new Error('Unknown preset: ' + this.currentPreset);
+      });
     }
     return resultPromise.then(() => {
-      // Run through the custom removals and additions to update the totals
-      Object.keys(this.customRemovals).forEach(k => {
-        k = extractIndices(k);
-        let details = lookup[k.globalIndex];
-        details.totalConnections -= 1;
-        let offsetIndex = details.navigationOffsets.indexOf(k.globalOppIndex);
-        if (offsetIndex !== -1) {
-          details.navigationOffsets.splice(offsetIndex, 1);
-        }
-      });
-      Object.keys(this.customConnections).forEach(k => {
-        k = extractIndices(k);
-        let details = lookup[k.globalIndex];
-        details.totalConnections += 1;
-        if (details.navigationOffsets.length < NUM_NAVIGATION_OFFSETS) {
-          details.navigationOffsets.push(k.globalOppIndex);
-        }
-      });
       // Mark each item as finished
       indices.forEach(globalIndex => {
         lookup[globalIndex].stillCounting = false;
