@@ -1,7 +1,6 @@
 import jQuery from 'jquery';
 import Underscore from 'underscore';
 
-import Incremental from '../../lib/Incremental';
 import Handsontable from '../../node_modules/handsontable/dist/handsontable.full.js';
 import '../../node_modules/handsontable/dist/handsontable.full.css';
 import JoinableView from '../JoinableView';
@@ -28,7 +27,7 @@ class DataTableView extends JoinableView {
     }
 
     this.handsontable = new Handsontable(d3el.select('#table').node(), {
-      data: this.model.rows.currentContents,
+      data: this.model.rows,
       colHeaders: this.model.parsedHeaders,
       rowHeaders: index => {
         // When a sort is applied (or a later subset of the data is loaded),
@@ -77,10 +76,13 @@ class DataTableView extends JoinableView {
 
     // Finally, listen to the rows for updates, so that we
     // re-render ourselves when necessary
-    this.model.rows.on('update', () => { this.render(d3el); });
+    this.model.on('update', () => { this.render(d3el); });
+
+    // A flag to force an update of the visible positions
+    this.firstRender = true;
   }
   draw (d3el) {
-    let currentRows = this.model ? this.model.rows.currentContents : null;
+    let currentRows = this.model ? this.model.rows : null;
     if (currentRows !== this.lastCurrentRows) {
       // TODO: this change is pretty jarring... even though the data is
       // different, we should try to maintain as much state that the table has
@@ -104,22 +106,23 @@ class DataTableView extends JoinableView {
 
     // Update the message at the bottom (TODO: use icon indicators, integrated
     // with the rest of the icons)
-    let status = this.model ? this.model.rows.status : Incremental.UNINITIALIZED;
-    let message = 'Loading...';
-    if (status === Incremental.FINISHED) {
-      message = 'Loaded successfully';
-    } else if (status === Incremental.ERROR) {
-      message = 'Error: ' + this.model.rows.error.message;
-    }
-    d3el.select('#message')
-      .text(message)
-      .classed('error', status === Incremental.ERROR);
+    // let status = this.model ? this.model.rows.status : Incremental.UNINITIALIZED;
+    // let message = 'Loading...';
+    // if (status === Incremental.FINISHED) {
+    //   message = 'Loaded successfully';
+    // } else if (status === Incremental.ERROR) {
+    //   message = 'Error: ' + this.model.rows.error.message;
+    // }
+    // d3el.select('#message')
+    //   .text(message)
+    //   .classed('error', status === Incremental.ERROR);
 
     this.updateVisibleLocations(d3el);
   }
   updateVisibleLocations (d3el) {
     let side = this.joinInterfaceView.getSide(this);
     let tableBBox = d3el.select('.ht_master .wtHolder').node().getBoundingClientRect();
+    let headerBBox = d3el.select('.ht_clone_top .htCore thead').node().getBoundingClientRect();
     let rowElements = d3el.selectAll('.ht_master .htCore tbody tr');
 
     let xPosition;
@@ -129,19 +132,19 @@ class DataTableView extends JoinableView {
 
       if (side === JoinInterfaceView.LEFT) {
         // Ideally, we'd like the dot to be just to the right of the row
-        if (firstRowBBox.right < tableBBox.right - 20) {
+        if (firstRowBBox.right < tableBBox.right - 2 * this.emSize) {
           // There's enough space between the right boundary of the table
           // and the scroll bar; in this situation, we'd like the dot just to the
           // right of the row (inside the scroll bar)
-          xPosition = firstRowBBox.right + 10;
+          xPosition = firstRowBBox.right + this.emSize;
         } else {
           // Not enough space before we hit the scroll bar; put the dot
           // outside of the scroll bar
-          xPosition = tableBBox.right + 10;
+          xPosition = tableBBox.right + this.emSize;
         }
       } else {
         // the left edge is much simpler
-        xPosition = tableBBox.left - 10;
+        xPosition = tableBBox.left - this.emSize;
       }
     }
 
@@ -150,31 +153,39 @@ class DataTableView extends JoinableView {
 
     // Figure out our new set of visible locations
     this.visibleLocations = {};
+    this.globalIndices = [];
     let self = this;
     rowElements.each(function () {
       // this refers to the DOM element
       let index = parseInt(jQuery(this).find('.rowHeader').text());
       let rowBBox = this.getBoundingClientRect();
       if (!isNaN(index)) {
-        self.visibleLocations[index] = {
+        let location = {
           x: xPosition,
-          y: rowBBox.top + rowBBox.height / 2,
-          transitioning: rowBBox.top < tableBBox.top || rowBBox.bottom > tableBBox.bottom
+          y: rowBBox.top + rowBBox.height / 2
         };
+        // Rows that don't have their center point visible should start
+        // disappearing
+        location.transitioning = location.y < headerBBox.bottom || location.y > tableBBox.bottom;
+        self.visibleLocations[index] = location;
+        if (!location.transitioning) {
+          self.globalIndices.push(index);
+        }
         // Assess whether anything has actually changed; if it has,
         // we may need to issue a render call
         if (index in oldLocations &&
-          oldLocations[index].x === self.visibleLocations[index].x &&
-          oldLocations[index].y === self.visibleLocations[index].y &&
-          oldLocations[index].transitioning === self.visibleLocations[index].transitioning) {
+          oldLocations[index].x === location.x &&
+          oldLocations[index].y === location.y &&
+          oldLocations[index].transitioning === location.transitioning) {
           delete oldLocations[index];
         }
       }
     });
 
-    // If something changed, we need to re-render stuff
-    if (Object.keys(oldLocations).length > 0) {
-      this.joinInterfaceView.render();
+    // If something changed, signal our parent view that the indices have changed
+    if (this.firstRender || Object.keys(oldLocations).length > 0) {
+      this.joinInterfaceView.updateVisibleItems();
+      this.firstRender = false;
     }
   }
 }

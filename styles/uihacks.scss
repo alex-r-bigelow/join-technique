@@ -2,8 +2,8 @@
 @import './fonts.scss';
 
 a.button,
-ul.selectMenu,
-ol.selectMenu {
+ul.selectMenu li,
+ol.selectMenu li {
   padding: 0.5em 0.5em 0.25em 0.5em;
   border: 1px solid $darkUiColor;
   background-color: $darkUiColor;
@@ -14,17 +14,18 @@ ol.selectMenu {
   line-height: 2em;
 }
 a.button:hover,
-ul.selectMenu:hover,
-ol.selectMenu:hover {
+ul.selectMenu li:hover,
+ol.selectMenu li:hover {
   color: $darkUiColor;
   background-color: $pageBackgroundColor;
+  cursor: pointer;
 }
 a.button.disabled,
 a.button.disabled:hover,
-ul.selectMenu.disabled,
-ul.selectMenu.disabled:hover,
-ol.selectMenu.disabled,
-ol.selectMenu.disabled:hover {
+ul.selectMenu.disabled li,
+ul.selectMenu.disabled li:hover,
+ol.selectMenu.disabled li,
+ol.selectMenu.disabled li:hover {
   cursor: default;
   border: 1px solid $lightUiColor;
   background-color: $lightUiColor;
@@ -34,9 +35,15 @@ ol.selectMenu.disabled:hover {
 ul.selectMenu,
 ol.selectMenu {
   list-style: none;
+  padding: 0px;
 
   li {
     display: none;
+  }
+  &.expanded {
+    li {
+      display: block;
+    }
   }
   li.selected {
     display: block;

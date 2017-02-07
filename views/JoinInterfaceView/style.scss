@@ -32,13 +32,79 @@ $footerSize: 4em;
   }
 }
 
+#presetSettings {
+  position: absolute;
+  top: 0px;
+  left: calc(33% + 2em);
+  width: calc(33% - 3.5em);
+  li {
+    line-height: 1em;
+    img {
+      display: none;
+    }
+    span {
+      position: relative;
+      bottom: 0em;
+    }
+  }
+  .selectMenu.expanded {
+    li {
+      img {
+        display: inline-block;
+        width: 6em;
+        height: 6em;
+      }
+      span {
+        bottom: 2.5em;
+      }
+    }
+  }
+}
+
 #overlay {
   position: absolute;
   top: 0px;
   left: 0px;
   /* width and height have to be set manually, because it's an SVG element */
   pointer-events: none;
-  z-index: 1000;
+
+  .point {
+    cursor: pointer;
+
+    circle {
+      fill: $darkUiColor;
+      stroke: $darkUiColor;
+    }
+    text {
+      text-anchor: middle;
+      fill: $pageBackgroundColor;
+    }
+  }
+  .point.stillCounting circle {
+    fill: $lightUiColor;
+    stroke: $lightUiColor;
+  }
+  .point:hover {
+    circle {
+      fill: $pageBackgroundColor;
+    }
+    text {
+      fill: $darkUiColor;
+    }
+  }
+  .point:hover.stillCounting {
+    circle {
+      fill: $pageBackgroundColor;
+    }
+    text {
+      fill: $lightUiColor;
+    }
+  }
+
+  .connection path {
+    stroke: $darkUiColor;
+    fill: none;
+  }
 }
 #overlay > * {
   pointer-events: visible;

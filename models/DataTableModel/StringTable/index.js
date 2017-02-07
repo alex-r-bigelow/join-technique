@@ -12,43 +12,54 @@ class StringTable extends DataTableModel {
       }
     });
 
-    // A string table is small enough that it can fit in memory... so pre-parse the whole thing
     this.textContent = textContent;
-    this.rows.setPopulateFunction((pop, fin, pur) => {
-      let chunkState = this.parseChunk(this.textContent);
-      pop(chunkState.parsedRecords);
-      fin();
-    }).then(() => {
-      this.rows.startPopulating();
-    });
+    this._rows;
+  }
+  get rows () {
+    // A string table is small enough that it can fit in memory... but we won't
+    // have the parsing settings from the mixin in the constructor. So we
+    // pre-parse the whole thing lazily when the contents are needed
+    if (!this._rows) {
+      let temp = this.parseChunk(this.textContent);
+      this._rows = temp.parsedRecords;
+      // the last record is never included in case the end of the chunk isn't
+      // actually the end of the file (and maybe the next chunk contains a few
+      // stray characters belonging to the previous line). So we have to add the
+      // last record at this level, because only here do we know for sure that
+      // the whole document has been processed
+      this._rows.push(temp.values.map(v => v.value));
+    }
+    return this._rows;
   }
   fullScan (callback) {
-    this.rows.contents.then(rows => {
-      rows.forEach(callback);
+    return new Promise((resolve, reject) => {
+      callback({
+        data: this.rows,
+        globalStartIndex: 0,
+        globalEndIndex: this.rows.length
+      });
+      resolve();
     });
   }
   getNativeIndex (i) {
     return i;
   }
   getItems (indices) {
-    return this.rows.contents.then(rows => {
+    // force the lazy evaluation to happen now, or the allProperties() promise
+    // will never be resolved
+    let rows = this.rows;
+    return this.allProperties().then(properties => {
       let results = [];
       indices.forEach(index => {
-        results.nativeIndices[results.rows.length] = index;
-        results.rows.push(rows[index]);
+        let item = {};
+        properties.forEach((p, i) => { item[p] = rows[index][i]; });
+        results.push(item);
       });
-      return indices;
-    });
-  }
-  allProperties () {
-    return this.rows.contents.then(rows => {
-      return this.parsedHeaders;
+      return results;
     });
   }
   numTotalItems () {
-    return this.rows.contents.then(rows => {
-      return rows.length;
-    });
+    return Promise.resolve(this.rows.length);
   }
   numChunks () {
     return 1;
