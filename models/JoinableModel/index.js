@@ -1,9 +1,10 @@
-import AbstractClass from '../../lib/AbstractClass';
+import Model from '../../lib/Model';
 
-class JoinableModel extends AbstractClass {
-  constructor () {
+class JoinableModel extends Model {
+  constructor (name) {
     super();
     this.requireProperties(['fullScan', 'getItems', 'getNativeIndex', 'allProperties', 'numTotalItems']);
+    this.name = name;
   }
 }
 

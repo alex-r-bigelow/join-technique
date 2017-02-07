@@ -20,6 +20,9 @@ class JoinInterfaceView extends View {
     this.debounceWait = 1000;
 
     this.joinModel = new JoinModel(null, null);
+    this.joinModel.on('update', () => {
+      this.render();
+    });
 
     defaultLeftView.joinInterfaceView = this;
     this.leftViews = [defaultLeftView];
@@ -58,13 +61,19 @@ class JoinInterfaceView extends View {
     }
     if (side === JoinInterfaceView.LEFT) {
       this.joinModel.leftModel = model;
+      if (this.joinModel.rightModel && this.joinModel.rightModel.name === model.name) {
+        model.name += ' (2)';
+      }
     } else if (side === JoinInterfaceView.RIGHT) {
       this.joinModel.rightModel = model;
+      if (this.joinModel.leftModel && this.joinModel.leftModel.name === model.name) {
+        model.name += ' (2)';
+      }
     } else {
       throw new Error('Unknown side: ' + side);
     }
     // Clear all connections, and apply the default preset
-    this.joinModel.changePreset(JoinModel.CONCATENATION);
+    this.joinModel.changePreset(JoinModel.PRESETS.CONCATENATION);
   }
   getModel (side) {
     if (side instanceof JoinableView) {
@@ -95,28 +104,41 @@ class JoinInterfaceView extends View {
     }
     this.render();
   }
-  getVisibleLocations (side) {
+  updateVisibleItems () {
+    let leftIndices = this.showLeftView ? this.leftViews[this.currentLeftView].globalIndices : {};
+    let rightIndices = this.showRightView ? this.rightViews[this.currentRightView].globalIndices : {};
+    this.joinModel.changeFocusItems(leftIndices, rightIndices);
+  }
+  getVisibleItemDetails (side) {
     if (side instanceof JoinableView) {
       side = this.getSide(side);
     }
+    let localToGlobalIndex = [];
+    let globalIndexToLocation = {};
+    let globalIndexToDetails = {};
     if (side === JoinInterfaceView.LEFT) {
-      if (!this.showLeftView) {
-        return {};
-      } else {
-        return this.leftViews[this.currentLeftView].visibleLocations;
+      if (this.showLeftView) {
+        localToGlobalIndex = this.leftViews[this.currentLeftView].globalIndices;
+        globalIndexToLocation = this.leftViews[this.currentLeftView].visibleLocations;
+        globalIndexToDetails = this.joinModel.leftLookup;
       }
     } else if (side === JoinInterfaceView.RIGHT) {
-      if (!this.showRightView) {
-        return {};
-      } else {
-        return this.rightViews[this.currentRightView].visibleLocations;
+      if (this.showRightView) {
+        localToGlobalIndex = this.rightViews[this.currentRightView].globalIndices;
+        globalIndexToLocation = this.rightViews[this.currentRightView].visibleLocations;
+        globalIndexToDetails = this.joinModel.rightLookup;
       }
     } else {
       throw new Error('Unknown side: ' + side);
     }
-  }
-  getVisibleConnections () {
-    return this.joinModel.customConnections.concat(this.joinModel.presetConnections.currentContents);
+
+    return localToGlobalIndex.map(globalIndex => {
+      return {
+        globalIndex,
+        location: globalIndexToLocation[globalIndex],
+        details: globalIndexToDetails[globalIndex]
+      };
+    });
   }
   scrollView (side, vector) {
     if (side instanceof JoinableView) {
@@ -199,6 +221,7 @@ class JoinInterfaceView extends View {
             this.showRightView = true;
           }
         }
+        this.updateVisibleItems();
         this.render();
       });
     rightIcons
@@ -213,6 +236,7 @@ class JoinInterfaceView extends View {
             this.showLeftView = true;
           }
         }
+        this.updateVisibleItems();
         this.render();
       });
   }

@@ -24,7 +24,6 @@ class FileTable extends DataTableModel {
       // Get the next chunk of data
       let currentChunk = this.fileObj.slice(this.currentOffset, this.currentOffset + CHUNK_BYTE_SIZE);
       // TODO... there's some mess here involving partial rows...
-      // Also should cal pur() to clean out old data that we don't have space for anymore
     }).then(() => {
       this.rows.startPopulating();
     });
@@ -38,15 +37,12 @@ class FileTable extends DataTableModel {
     this.rows.reset();
   }
   fullScan (callback) {
-    // TODO: fire callbacks for every row
+    // TODO: fire callback a chunk at a time
   }
   getNativeIndex () {
     // TODO
   }
   getItems (indices) {
-    // TODO
-  }
-  allProperties () {
     // TODO
   }
   numTotalItems () {

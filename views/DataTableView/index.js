@@ -1,7 +1,6 @@
 import jQuery from 'jquery';
 import Underscore from 'underscore';
 
-import Incremental from '../../lib/Incremental';
 import Handsontable from '../../node_modules/handsontable/dist/handsontable.full.js';
 import '../../node_modules/handsontable/dist/handsontable.full.css';
 import JoinableView from '../JoinableView';
@@ -28,7 +27,7 @@ class DataTableView extends JoinableView {
     }
 
     this.handsontable = new Handsontable(d3el.select('#table').node(), {
-      data: this.model.rows.currentContents,
+      data: this.model.rows,
       colHeaders: this.model.parsedHeaders,
       rowHeaders: index => {
         // When a sort is applied (or a later subset of the data is loaded),
@@ -77,10 +76,13 @@ class DataTableView extends JoinableView {
 
     // Finally, listen to the rows for updates, so that we
     // re-render ourselves when necessary
-    this.model.rows.on('update', () => { this.render(d3el); });
+    this.model.on('update', () => { this.render(d3el); });
+
+    // A flag to force an update of the visible positions
+    this.firstRender = true;
   }
   draw (d3el) {
-    let currentRows = this.model ? this.model.rows.currentContents : null;
+    let currentRows = this.model ? this.model.rows : null;
     if (currentRows !== this.lastCurrentRows) {
       // TODO: this change is pretty jarring... even though the data is
       // different, we should try to maintain as much state that the table has
@@ -104,16 +106,16 @@ class DataTableView extends JoinableView {
 
     // Update the message at the bottom (TODO: use icon indicators, integrated
     // with the rest of the icons)
-    let status = this.model ? this.model.rows.status : Incremental.UNINITIALIZED;
-    let message = 'Loading...';
-    if (status === Incremental.FINISHED) {
-      message = 'Loaded successfully';
-    } else if (status === Incremental.ERROR) {
-      message = 'Error: ' + this.model.rows.error.message;
-    }
-    d3el.select('#message')
-      .text(message)
-      .classed('error', status === Incremental.ERROR);
+    // let status = this.model ? this.model.rows.status : Incremental.UNINITIALIZED;
+    // let message = 'Loading...';
+    // if (status === Incremental.FINISHED) {
+    //   message = 'Loaded successfully';
+    // } else if (status === Incremental.ERROR) {
+    //   message = 'Error: ' + this.model.rows.error.message;
+    // }
+    // d3el.select('#message')
+    //   .text(message)
+    //   .classed('error', status === Incremental.ERROR);
 
     this.updateVisibleLocations(d3el);
   }
@@ -151,10 +153,12 @@ class DataTableView extends JoinableView {
 
     // Figure out our new set of visible locations
     this.visibleLocations = {};
+    this.globalIndices = [];
     let self = this;
     rowElements.each(function () {
       // this refers to the DOM element
       let index = parseInt(jQuery(this).find('.rowHeader').text());
+      self.globalIndices.push(index);
       let rowBBox = this.getBoundingClientRect();
       if (!isNaN(index)) {
         let location = {
@@ -176,9 +180,10 @@ class DataTableView extends JoinableView {
       }
     });
 
-    // If something changed, we need to re-render stuff
-    if (Object.keys(oldLocations).length > 0) {
-      this.joinInterfaceView.render();
+    // If something changed, signal our parent view that the indices have changed
+    if (this.firstRender || Object.keys(oldLocations).length > 0) {
+      this.joinInterfaceView.updateVisibleItems();
+      this.firstRender = false;
     }
   }
 }

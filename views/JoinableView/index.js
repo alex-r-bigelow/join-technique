@@ -7,6 +7,7 @@ class JoinableView extends View {
     // This is an abstract class; subclasses should override this.icon
     this.icon = missingIcon;
     this.visibleLocations = {};
+    this.globalIndices = [];
   }
   get model () {
     if (!this.joinInterfaceView) {

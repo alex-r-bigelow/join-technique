@@ -15,14 +15,20 @@ function DsvMixin (superclass) {
       // column headers. Otherwise, this should be a user-supplied array of predefined column names.
 
       this.parsedHeaders = null;
+      this.propertiesResolveFunction;
+      this.propertiesPromise = new Promise((resolve, reject) => {
+        this.propertiesResolveFunction = resolve;
+      });
+      if (this.settings.columnHeaders instanceof Array) {
+        this.parsedHeaders = this.settings.columnHeaders;
+        this.propertiesResolveFunction(this.parsedHeaders);
+      }
+    }
+    allProperties () {
+      return this.propertiesPromise;
     }
     parseChunk (chunk, oldState) {
       let index = 0;
-      if (this.parsedHeaders === null && this.settings.columnHeaders instanceof Array) {
-        this.parsedHeaders = this.settings.columnHeaders;
-      } else if (typeof this.settings.columnHeaders !== 'number') {
-        throw new Error('columnHeaders setting must be an array or an integer');
-      }
       let state = oldState || {
         values: [],
         finished: false,
@@ -95,6 +101,7 @@ function DsvMixin (superclass) {
               });
               this.parsedHeaders = temp;
               state.values = [];
+              this.propertiesResolveFunction(this.parsedHeaders);
             }
             // If we're *not* done extracting all the headers,
             // we want to continue to collect all the headers from the next row

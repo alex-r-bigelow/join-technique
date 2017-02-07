@@ -72,6 +72,10 @@ $footerSize: 4em;
 #overlay > * {
   pointer-events: visible;
 }
+#overlay #lines .connection path {
+  stroke: black;
+  fill: none;
+}
 
 #footer {
   position: absolute;

@@ -12,43 +12,39 @@ class StringTable extends DataTableModel {
       }
     });
 
-    // A string table is small enough that it can fit in memory... so pre-parse the whole thing
     this.textContent = textContent;
-    this.rows.setPopulateFunction(incArr => {
-      let chunkState = this.parseChunk(this.textContent);
-      incArr.populate(chunkState.parsedRecords);
-      incArr.finish();
-    }).then(() => {
-      this.rows.startPopulating();
-    });
+    this._rows;
+  }
+  get rows () {
+    // A string table is small enough that it can fit in memory... but we won't
+    // have the parsing settings from the mixin in the constructor. So we
+    // pre-parse the whole thing lazily when the contents are needed
+    if (!this._rows) {
+      this._rows = this.parseChunk(this.textContent).parsedRecords;
+    }
+    return this._rows;
   }
   fullScan (callback) {
-    this.rows.contents.then(rows => {
-      rows.forEach(callback);
+    callback({
+      data: this.rows,
+      globalStartIndex: 0,
+      globalEndIndex: this.rows.length
     });
   }
   getNativeIndex (i) {
     return i;
   }
   getItems (indices) {
-    return this.rows.contents.then(rows => {
+    return new Promise((resolve, reject) => {
       let results = [];
       indices.forEach(index => {
-        results.nativeIndices[results.rows.length] = index;
-        results.rows.push(rows[index]);
+        results.push(this.rows[index]);
       });
-      return indices;
-    });
-  }
-  allProperties () {
-    return this.rows.contents.then(rows => {
-      return this.parsedHeaders;
+      resolve(results);
     });
   }
   numTotalItems () {
-    return this.rows.contents.then(rows => {
-      return rows.length;
-    });
+    return Promise.resolve(this.rows.length);
   }
   numChunks () {
     return 1;

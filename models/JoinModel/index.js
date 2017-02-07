@@ -1,35 +1,80 @@
+import Model from '../../lib/Model';
 import sqlParser from 'sql-parser';
 import sqlOpToFunction from '../../lib/sqlOpToFunction';
-import { IncrementalArray } from '../../lib/Incremental';
-import Connection from './Connection';
+// let sideConnectionWorker = require('worker-loader!./sideConnectionWorker.js');
 
-class JoinModel {
+// TODO: remove these two debugging lines
+window.sqlOpToFunction = sqlOpToFunction;
+window.sqlParser = sqlParser;
+
+let NUM_NAVIGATION_OFFSETS = 5;
+
+class JoinModel extends Model {
   constructor (leftModel, rightModel) {
+    super();
     this.leftModel = leftModel;
     this.rightModel = rightModel;
-    this.leftIndices = [];
-    this.rightIndices = [];
-    this.leftItems = [];
-    this.rightItems = [];
-    this.currentPreset = JoinModel.CONCATENATION;
+
+    this.currentPreset = JoinModel.PRESETS.CONCATENATION;
     this.onCondition = null;
     this.onConditionFunc = (itemsToCompare) => false;
-    this.presetConnections = new IncrementalArray();
-    this.customConnections = [];
-    this.connectionLookup = {};
+
+    // each of these is keyed by "globalLeftIndex_globalRightIndex"
+    this.customConnections = {};
+    this.customRemovals = {};
+
+    this.startComputingConnections([], [], [], []);
+  }
+  startComputingConnections (leftIndices, rightIndices, leftItems, rightItems) {
+    return this.pauseWebWorkers().then(() => {
+      this.leftIndices = leftIndices;
+      this.rightIndices = rightIndices;
+      this.leftItems = leftItems;
+      this.rightItems = rightItems;
+      this.visiblePresetConnections = {};
+      this.visibleConnectionStatus = JoinModel.STATUS.COMPUTING;
+      this.leftConnectionStatus = JoinModel.STATUS.COMPUTING;
+      this.rightConnectionStatus = JoinModel.STATUS.COMPUTING;
+
+      function initLookup (olddetails, indices) {
+        olddetails = olddetails || {};
+        let details = {};
+        indices.forEach(globalIndex => {
+          details[globalIndex] = {
+            visiblePresetConnectionKeys: [],
+            numPresetConnections: 0,
+            navigationOffsets: [],
+            scannedRanges: []
+          };
+        });
+        return details;
+      }
+      this.leftLookup = initLookup(this.leftLookup, this.leftIndices);
+      this.rightLookup = initLookup(this.rightLookup, this.rightIndices);
+
+      let leftName = this.leftModel ? this.leftModel.name : null;
+      let rightName = this.rightModel ? this.rightModel.name : null;
+
+      this.computeVisibleConnections().then(() => {
+        this.visibleConnectionStatus = JoinModel.STATUS.FINISHED;
+        this.trigger('update');
+      });
+      this.countAllConnections(this.leftIndices, this.leftItems, this.leftLookup, leftName, this.rightModel).then(() => {
+        this.leftConnectionStatus = JoinModel.STATUS.FINISHED;
+        this.trigger('update');
+      });
+      this.countAllConnections(this.rightIndices, this.rightItems, this.rightLookup, rightName, this.leftModel).then(() => {
+        this.rightConnectionStatus = JoinModel.STATUS.FINISHED;
+        this.trigger('update');
+      });
+    });
   }
   changeFocusItems (leftIndices, rightIndices) {
-    this.presetConnections.pause();
-    Promise.all([this.leftModel.getItems(leftIndices),
-                 this.rightModel.getItems(rightIndices)])
+    let leftItems = this.leftModel ? this.leftModel.getItems(leftIndices) : Promise.resolve([]);
+    let rightItems = this.rightModel ? this.rightModel.getItems(rightIndices) : Promise.resolve([]);
+    Promise.all([leftItems, rightItems])
       .then(([leftItems, rightItems]) => {
-        this.leftIndices = leftIndices;
-        this.rightIndices = rightIndices;
-        this.leftItems = leftItems;
-        this.rightItems = rightItems;
-        // We've just changed the visible items; old results are still valid,
-        // so just do a hot swap instead of a full reset
-        this.presetConnections.reset(true);
+        this.startComputingConnections(leftIndices, rightIndices, leftItems, rightItems);
       });
   }
   changePreset (preset, onCondition) {
@@ -37,122 +82,166 @@ class JoinModel {
       // Nothing is actually changing... so we can leave things as they were
       return;
     }
-    // First, interrupt if we're in the middle of calculating a different preset
-    this.presetConnections.pause();
-    this.connectionLookup = {};
-
     this.currentPreset = preset;
-    let popFunc;
     switch (preset) {
-      case JoinModel.EQUIJOIN:
-      case JoinModel.THETA_JOIN:
+      case JoinModel.PRESETS.EQUIJOIN:
+      case JoinModel.PRESETS.THETA_JOIN:
         if (!onCondition) {
           throw new Error('TODO: Have not yet implemented auto-inference of join expressions');
         }
         this.onCondition = onCondition;
         this.onConditionFunc = sqlOpToFunction(sqlParser(onCondition));
-        popFunc = this.thetaJoin;
         break;
-      case JoinModel.CROSS_PRODUCT:
+      case JoinModel.PRESETS.CROSS_PRODUCT:
         this.onCondition = null;
         this.onConditionFunc = (itemsToCompare) => true;
-        popFunc = this.crossProduct;
         break;
-      case JoinModel.ORDERED_JOIN:
+      case JoinModel.PRESETS.ORDERED_JOIN:
         this.onCondition = null;
         this.onConditionFunc = (itemsToCompare) => {
           let keys = Object.keys(itemsToCompare);
           return itemsToCompare[keys[0]].index === itemsToCompare[keys[1]].index;
         };
-        popFunc = this.orderedJoin;
         break;
-      case JoinModel.CONCATENATION:
+      case JoinModel.PRESETS.CONCATENATION:
         this.onCondition = null;
         this.onConditionFunc = (itemsToCompare) => false;
-        popFunc = this.concatenation;
+        break;
+      default:
+        throw new Error('Unknown preset: ' + this.currentPreset);
     }
-    this.presetConnections
-      .setPopulateFunction(incArr => {
-        return popFunc(incArr);
-      }).then(() => {
-        this.presetConnections.startPopulating();
-      });
+    this.startComputingConnections(this.leftIndices, this.rightIndices, this.leftItems, this.rightItems);
   }
-  connect (incArr, leftIndex, rightIndex) {
-    let connectionKey = leftIndex + rightIndex;
-    if (this.connectionLookup[connectionKey] === undefined) {
-      this.connectionLookup[connectionKey] = incArr.currentContents.length;
-      let newConnection = new Connection(leftIndex, this.leftItems[leftIndex], rightIndex, this.rightItems[rightIndex]);
-      return incArr.currentContents.populate([newConnection]);
-      /*
-      TODO: we should actually flag existing items as being "new" if we try to
-      add them again; otherwise, these items might get discarded prematurely.
-      This probably requires an architectural change of how IncrementalArray
-      throws away old values, and may or may not be helped if we only populate
-      in a chunked way
-      */
-    }
-    return true;
-  }
-  thetaJoin (incArr) {
+  pauseWebWorkers () {
     // TODO
+    return Promise.resolve();
   }
-  crossProduct (incArr) {
-    // First, create connections between the visible items
-    this.leftIndices.forEach(li => {
-      this.rightIndices.forEach(ri => {
-        if (!this.connect(incArr, li, ri)) {
-          return;
-        }
-      });
+  indexInRanges (index, ranges) {
+    let inrange = false;
+    ranges.some(range => {
+      inrange = index >= range.low && index < range.high;
+      return inrange;
     });
-
-    // Now just add connections numerically
-    Promise.all([this.leftModel.numTotalItems(), this.rightModel.numTotalItems()])
-      .then(counts => {
-        for (let i = 0; i < counts[0]; i += 1) {
-          for (let j = 0; j < counts[1]; j += 1) {
-            if (!this.connect(incArr, i, j)) {
-              return;
-            }
-          }
-        }
-        incArr.finish();
-      });
+    return inrange;
   }
-  orderedJoin (incArr) {
-    // First, create connections between the visible items
-    this.leftIndices.forEach(li => {
-      this.rightIndices.forEach(ri => {
-        if (li === ri) {
-          if (!this.connect(incArr, li, ri)) {
-            return;
-          }
-        }
-      });
+  addIndexToRange (index, ranges) {
+    let added = false;
+    ranges.some(range => {
+      if (index === range.low - 1) {
+        range.low -= 1;
+        added = true;
+      } else if (index === range.high) {
+        range.high += 1;
+        added = true;
+      } else if (index >= range.low && index < range.high) {
+        added = true;
+      }
+      return added;
     });
-
-    // Now just add connections numerically
-    Promise.all([this.leftModel.numTotalItems(), this.rightModel.numTotalItems()])
-      .then(counts => {
-        for (let i = 0; i < Math.min(...counts); i += 1) {
-          if (!this.connect(incArr, i, i)) {
-            return;
-          }
-        }
-        incArr.finish();
+    if (!added) {
+      ranges.push({
+        low: index,
+        high: index + 1
       });
+    }
   }
-  concatenation (incArr) {
-    // There are no predefined topological connections when
-    // concatenating tables
-    incArr.finish();
+  computeVisibleConnections () {
+    return new Promise((resolve, reject) => {
+      this.leftIndices.forEach((globalLeftIndex, localLeftIndex) => {
+        this.rightIndices.forEach((globalRightIndex, localRightIndex) => {
+          let itemsToCompare = {};
+          itemsToCompare[this.leftModel.name] = {
+            index: globalLeftIndex,
+            item: this.leftItems[localLeftIndex]
+          };
+          itemsToCompare[this.rightModel.name] = {
+            index: globalRightIndex,
+            item: this.rightItems[localRightIndex]
+          };
+          if (this.onConditionFunc(itemsToCompare)) {
+            let connectionKey = globalLeftIndex + '_' + globalRightIndex;
+            let leftItemDetails = this.leftLookup[globalLeftIndex];
+            leftItemDetails.visiblePresetConnectionKeys.push(connectionKey);
+            let rightItemDetails = this.rightLookup[globalRightIndex];
+            rightItemDetails.visiblePresetConnectionKeys.push(connectionKey);
+            this.visiblePresetConnections[connectionKey] = true;
+          }
+        });
+      });
+      resolve();
+    });
+  }
+  countAllConnections (indices, items, lookup, modelName, oppositeModel) {
+    switch (this.currentPreset) {
+      case JoinModel.PRESETS.EQUIJOIN:
+      case JoinModel.PRESETS.THETA_JOIN:
+        // Attribute-based presets require a full table scan
+        return oppositeModel.fullScan(chunk => {
+          // TODO: do this behind the scenes in a web worker so it doesn't lock up the UI
+          chunk.data.forEach((oppItem, localOppIndex) => {
+            let globalOppIndex = localOppIndex + chunk.globalStartIndex;
+            indices.forEach((globalIndex, localIndex) => {
+              let itemsToCompare = {};
+              itemsToCompare[modelName] = {
+                index: globalIndex,
+                item: items[localIndex]
+              };
+              itemsToCompare[oppositeModel.name] = {
+                index: globalOppIndex,
+                item: oppItem
+              };
+              let details = lookup[globalIndex];
+              if (!this.indexInRanges(globalOppIndex, details.scannedRanges) &&
+                  this.onConditionFunc(itemsToCompare)) {
+                details.numPresetConnections += 1;
+                if (details.navigationOffsets.length < NUM_NAVIGATION_OFFSETS) {
+                  details.navigationOffsets.push(globalOppIndex);
+                }
+              }
+            });
+          });
+          // TODO: Incrementally update the interface
+          // this.trigger('update');
+        });
+      case JoinModel.PRESETS.CROSS_PRODUCT:
+        // We already know the total count (the size of all items in the opposite set)
+        return oppositeModel.numTotalItems().then(count => {
+          indices.forEach((globalIndex, localIndex) => {
+            let details = lookup[globalIndex];
+            details.numPresetConnections = count;
+            details.navigationOffsets = []; // including offsets is kind of pointless...
+          });
+        });
+      case JoinModel.PRESETS.ORDERED_JOIN:
+        // We already know the total count (1), and which connection to jump to just
+        // by the global index number
+        return new Promise((resolve, reject) => {
+          indices.forEach((globalIndex, localIndex) => {
+            let details = lookup[globalIndex];
+            details.numPresetConnections = 1;
+            details.navigationOffsets = [globalIndex];
+          });
+          resolve();
+        });
+      case JoinModel.PRESETS.CONCATENATION:
+        // There are no connections; numPresetConnections and navigationOffsets are already
+        // correct (0 and empty)
+        return Promise.resolve();
+      default:
+        throw new Error('Unknown preset: ' + this.currentPreset);
+    }
   }
 }
-JoinModel.EQUIJOIN = 'EQUIJOIN';
-JoinModel.THETA_JOIN = 'THETA_JOIN';
-JoinModel.CROSS_PRODUCT = 'CROSS_PRODUCT';
-JoinModel.ORDERED_JOIN = 'ORDERED_JOIN';
-JoinModel.CONCATENATION = 'CONCATENATION';
+JoinModel.PRESETS = {
+  EQUIJOIN: 'EQUIJOIN',
+  THETA_JOIN: 'THETA_JOIN',
+  CROSS_PRODUCT: 'CROSS_PRODUCT',
+  ORDERED_JOIN: 'ORDERED_JOIN',
+  CONCATENATION: 'CONCATENATION'
+};
+JoinModel.STATUS = {
+  FINISHED: 'FINISHED',
+  COMPUTING: 'COMPUTING'
+};
 
 export default JoinModel;
