@@ -13,4 +13,4 @@ Development:
 Deployment:
 ===========
     webpack
-Bundles everything into `build/`
+Bundles everything into `docs/` (used for the github pages - make sure to run this before committing / merging to master)
