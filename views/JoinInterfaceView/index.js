@@ -2,11 +2,21 @@
 import template from './template.html';
 import './style.scss';
 
-import JoinModel from '../../models/JoinModel';
 import View from '../../lib/View';
 import JoinableView from '../JoinableView';
 import Overlay from './Overlay';
 import makeSelectMenu from '../../lib/makeSelectMenu';
+
+import Concatenation from '../../models/JoinModel/Concatenation';
+import OrderedJoin from '../../models/JoinModel/OrderedJoin';
+import CrossProduct from '../../models/JoinModel/CrossProduct';
+import ThetaJoin from '../../models/JoinModel/ThetaJoin';
+let PRESETS = {
+  Concatenation,
+  OrderedJoin,
+  CrossProduct,
+  ThetaJoin
+};
 
 import hiddenIcon from '../../img/hide.svg';
 import visibleIcon from '../../img/show.svg';
@@ -15,7 +25,7 @@ class JoinInterfaceView extends View {
   constructor (defaultLeftView, defaultRightView) {
     super();
 
-    this.joinModel = new JoinModel(null, null);
+    this.joinModel = new PRESETS.Concatenation();
     this.joinModel.on('update', () => {
       this.render();
     });
@@ -63,13 +73,13 @@ class JoinInterfaceView extends View {
     } else if (side === JoinInterfaceView.RIGHT) {
       this.joinModel.rightModel = model;
       if (this.joinModel.leftModel && this.joinModel.leftModel.name === model.name) {
-        model.name += ' (2)';
+        model.name += '_2';
       }
     } else {
       throw new Error('Unknown side: ' + side);
     }
     // Clear all connections, and apply the default preset
-    this.joinModel.changePreset(JoinModel.PRESETS.CONCATENATION);
+    this.joinModel = new PRESETS.Concatenation(this.joinModel.leftModel, this.joinModel.rightModel);
   }
   getModel (side) {
     if (side instanceof JoinableView) {
@@ -99,6 +109,17 @@ class JoinInterfaceView extends View {
       throw new Error('Unknown side: ' + side);
     }
     this.render();
+  }
+  changePreset (preset) {
+    if (this instanceof PRESETS[preset]) {
+      // Nothing is actually changing... so we can leave things as they were
+      return this;
+    }
+    // TODO: this clears all the customizations; should we copy those to the
+    // new model as well?
+    return new PRESETS[preset](this.joinModel.leftModel, this.joinModel.rightModel,
+      this.joinModel.leftIndices, this.joinModel.rightIndices,
+      this.joinModel.leftItems, this.joinModel.rightItems);
   }
   updateVisibleItems () {
     let leftIndices = this.showLeftView ? this.leftViews[this.currentLeftView].globalIndices : [];
@@ -148,21 +169,24 @@ class JoinInterfaceView extends View {
     let self = this;
     d3el.select('.selectMenu').on('change', function () {
       // this refers to the DOM element
-      let joinExpressionElement = d3el.select('#joinExpression');
-      if (this.value === JoinModel.PRESETS.THETA_JOIN) {
-        joinExpressionElement.style('display', null);
-        let oldExpression = joinExpressionElement.property('value');
-        self.joinModel.changePreset(this.value, oldExpression);
+      let thetaExpressionElement = d3el.select('#joinExpression');
+      if (this.value === 'ThetaJoin') {
+        thetaExpressionElement.style('display', null);
+        let oldExpression = thetaExpressionElement.property('value');
         if (!oldExpression) {
           self.joinModel.autoInferThetaExpression(expression => {
-            joinExpressionElement.property('value', expression);
-            self.joinModel.changePreset(this.value, expression);
+            thetaExpressionElement.property('value', expression);
+            self.joinModel = self.changePreset(this.value);
+            self.joinModel.setExpression(expression);
           });
+        } else {
+          self.joinModel.setExpression(oldExpression);
         }
       } else {
-        joinExpressionElement.style('display', 'none');
-        self.joinModel.changePreset(this.value);
+        thetaExpressionElement.style('display', 'none');
+        self.joinModel = self.changePreset(this.value);
       }
+      self.draw(d3el);
     });
   }
   draw (d3el) {
