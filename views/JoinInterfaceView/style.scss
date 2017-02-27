@@ -37,6 +37,9 @@ $footerSize: 4em;
   top: 0px;
   left: calc(33% + 2em);
   width: calc(33% - 3.5em);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   li {
     line-height: 1em;
     img {

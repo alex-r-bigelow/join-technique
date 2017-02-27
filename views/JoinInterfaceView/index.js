@@ -58,7 +58,7 @@ class JoinInterfaceView extends View {
     if (side === JoinInterfaceView.LEFT) {
       this.joinModel.leftModel = model;
       if (this.joinModel.rightModel && this.joinModel.rightModel.name === model.name) {
-        model.name += ' (2)';
+        model.name += '_2';
       }
     } else if (side === JoinInterfaceView.RIGHT) {
       this.joinModel.rightModel = model;
@@ -148,7 +148,21 @@ class JoinInterfaceView extends View {
     let self = this;
     d3el.select('.selectMenu').on('change', function () {
       // this refers to the DOM element
-      self.joinModel.changePreset(this.value);
+      let joinExpressionElement = d3el.select('#joinExpression');
+      if (this.value === JoinModel.PRESETS.THETA_JOIN) {
+        joinExpressionElement.style('display', null);
+        let oldExpression = joinExpressionElement.property('value');
+        self.joinModel.changePreset(this.value, oldExpression);
+        if (!oldExpression) {
+          self.joinModel.autoInferThetaExpression(expression => {
+            joinExpressionElement.property('value', expression);
+            self.joinModel.changePreset(this.value, expression);
+          });
+        }
+      } else {
+        joinExpressionElement.style('display', 'none');
+        self.joinModel.changePreset(this.value);
+      }
     });
   }
   draw (d3el) {

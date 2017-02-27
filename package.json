@@ -7,7 +7,7 @@
   },
   "author": "Alex Bigelow",
   "scripts": {
-    "prepublish": "cd lib; rollup -c && uglifyjs lib/d3.js -c -m -o d3.min.js"
+    "prepublish": "cd lib; ../node_modules/rollup/bin/rollup -c && ../node_modules/uglify-js/bin/uglifyjs d3.js -c -m -o d3.min.js"
   },
   "devDependencies": {
     "babel-core": "^6.7.2",

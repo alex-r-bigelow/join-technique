@@ -71,7 +71,7 @@ class DataLoaderView extends JoinableView {
     this.setPage(new ParsePage(this, this));
   }
   loadEmptyTable () {
-    let testTable = 'this,is,a,test,to,see,if,the,table,behaves';
+    let testTable = 'this is,a,test,to,see,if,the,table,behaves';
     let ec = testTable.split(',').length - 1;
     for (let r = 0; r < 200; r += 1) {
       testTable += '\n' + r;
