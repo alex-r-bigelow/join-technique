@@ -165,18 +165,18 @@ class JoinInterfaceView extends View {
   }
   setup (d3el) {
     d3el.html(template);
-    makeSelectMenu(d3el.select('.selectMenu').node());
+    makeSelectMenu(d3el.select('#presetSettings').node());
     let self = this;
-    d3el.select('.selectMenu').on('change', function () {
+    let thetaExpressionElement = d3el.select('#thetaExpression');
+    d3el.select('#presetSettings').on('change', function () {
       // this refers to the DOM element
-      let thetaExpressionElement = d3el.select('#joinExpression');
+      self.joinModel = self.changePreset(this.value);
       if (this.value === 'ThetaJoin') {
         thetaExpressionElement.style('display', null);
         let oldExpression = thetaExpressionElement.property('value');
         if (!oldExpression) {
           self.joinModel.autoInferThetaExpression(expression => {
             thetaExpressionElement.property('value', expression);
-            self.joinModel = self.changePreset(this.value);
             self.joinModel.setExpression(expression);
           });
         } else {
@@ -184,9 +184,12 @@ class JoinInterfaceView extends View {
         }
       } else {
         thetaExpressionElement.style('display', 'none');
-        self.joinModel = self.changePreset(this.value);
       }
       self.draw(d3el);
+    });
+    thetaExpressionElement.on('change', function () {
+      // this refers to the DOM element
+      self.joinModel.setExpression(this.value);
     });
   }
   draw (d3el) {
@@ -194,7 +197,8 @@ class JoinInterfaceView extends View {
     let bounds = d3el.select('#views').node().getBoundingClientRect();
     let overlayEl = d3el.select('#overlay')
       .attr('width', bounds.width)
-      .attr('height', bounds.height);
+      .attr('height', bounds.height)
+      .attr('viewBox', bounds.left + ' ' + bounds.top + ' ' + bounds.width + ' ' + bounds.height);
 
     this.renderEachView(d3el);
     this.overlay.render(overlayEl);

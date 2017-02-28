@@ -70,13 +70,13 @@ class ThetaJoin extends JoinModel {
     });
   }
   setExpression (joinExpression) {
-    this.expressionError = JoinModel.EXPRESSION_ERRORS.NONE;
+    this.expressionError = ThetaJoin.EXPRESSION_ERRORS.NONE;
     if (!joinExpression) {
-      this.expressionError = JoinModel.EXPRESSION_ERRORS.EMPTY;
+      this.expressionError = ThetaJoin.EXPRESSION_ERRORS.EMPTY;
     } else if (!this.leftModel || !this.rightModel) {
-      this.expressionError = JoinModel.EXPRESSION_ERRORS.MISSING_MODEL;
+      this.expressionError = ThetaJoin.EXPRESSION_ERRORS.MISSING_MODEL;
     } else {
-      this.expressionError = JoinModel.EXPRESSION_ERRORS.EVALUATING;
+      this.expressionError = ThetaJoin.EXPRESSION_ERRORS.EVALUATING;
       this.constructSqlExpression(joinExpression);
     }
     // We don't actually have a theta expression yet...

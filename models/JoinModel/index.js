@@ -147,7 +147,7 @@ class JoinModel extends Model {
       items = this.rightItems;
       lookup = this.rightLookup;
       modelName = this.rightModel.name;
-      oppositeModel = this.rightModel;
+      oppositeModel = this.leftModel;
       extractIndices = k => {
         let [left, right] = k.split('_');
         return {
