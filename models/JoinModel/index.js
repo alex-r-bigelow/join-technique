@@ -12,6 +12,9 @@ class JoinModel extends Model {
     leftItems = leftItems || [];
     rightItems = rightItems || [];
 
+    this.computeWait = 200;
+    this.computePromise = null;
+
     // each of these is keyed by "globalLeftIndex_globalRightIndex"
     this.customConnections = {};
     this.customRemovals = {};
@@ -19,15 +22,29 @@ class JoinModel extends Model {
     this.startComputingConnections(leftIndices, rightIndices, leftItems, rightItems);
   }
   startComputingConnections (leftIndices, rightIndices, leftItems, rightItems) {
+    // Debounce multiple calls to computeConnections
+    let resolveFunc;
+    if (this.computePromise === null) {
+      this.computePromise = new Promise((resolve, reject) => {
+        resolveFunc = resolve;
+      });
+    }
+    clearTimeout(this.computeTimeout);
+    this.computeTimeout = setTimeout(() => {
+      this.computeTimeout = null;
+      this.computeConnections()
+        .then(resolveFunc);
+    }, this.computeWait);
     return this.pauseWebWorkers().then(() => {
+      this.visibleConnectionStatus = JoinModel.STATUS.COMPUTING;
+      this.leftConnectionStatus = JoinModel.STATUS.COMPUTING;
+      this.rightConnectionStatus = JoinModel.STATUS.COMPUTING;
+
       this.leftIndices = leftIndices;
       this.rightIndices = rightIndices;
       this.leftItems = leftItems;
       this.rightItems = rightItems;
       this.visiblePresetConnections = {};
-      this.visibleConnectionStatus = JoinModel.STATUS.COMPUTING;
-      this.leftConnectionStatus = JoinModel.STATUS.COMPUTING;
-      this.rightConnectionStatus = JoinModel.STATUS.COMPUTING;
 
       function initLookup (olddetails, indices) {
         // TODO: keep information from paused counting passes
@@ -48,19 +65,24 @@ class JoinModel extends Model {
       this.leftLookup = initLookup(this.leftLookup, this.leftIndices);
       this.rightLookup = initLookup(this.rightLookup, this.rightIndices);
 
+      return this.computePromise;
+    });
+  }
+  computeConnections () {
+    return Promise.all([
       this.computeVisibleConnections().then(() => {
         this.visibleConnectionStatus = JoinModel.STATUS.FINISHED;
         this.trigger('update');
-      });
+      }),
       this.countAllConnections(JoinModel.SIDE.LEFT).then(() => {
         this.leftConnectionStatus = JoinModel.STATUS.FINISHED;
         this.trigger('update');
-      });
+      }),
       this.countAllConnections(JoinModel.SIDE.RIGHT).then(() => {
         this.rightConnectionStatus = JoinModel.STATUS.FINISHED;
         this.trigger('update');
-      });
-    });
+      })
+    ]);
   }
   changeFocusItems (leftIndices, rightIndices) {
     let leftItems = this.leftModel ? this.leftModel.getItems(leftIndices) : Promise.resolve([]);

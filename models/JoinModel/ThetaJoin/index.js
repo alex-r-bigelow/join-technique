@@ -70,6 +70,7 @@ class ThetaJoin extends JoinModel {
     });
   }
   setExpression (joinExpression) {
+    let returnPromise = Promise.resolve();
     this.expressionError = ThetaJoin.EXPRESSION_ERRORS.NONE;
     if (!joinExpression) {
       this.expressionError = ThetaJoin.EXPRESSION_ERRORS.EMPTY;
@@ -77,12 +78,14 @@ class ThetaJoin extends JoinModel {
       this.expressionError = ThetaJoin.EXPRESSION_ERRORS.MISSING_MODEL;
     } else {
       this.expressionError = ThetaJoin.EXPRESSION_ERRORS.EVALUATING;
-      this.constructSqlExpression(joinExpression);
+      returnPromise = this.constructSqlExpression(joinExpression);
     }
     // We don't actually have a theta expression yet...
     // so even though theta join is selected, default to concatenation behavior
     this.joinExpression = null;
     this.joinExpressionFunc = (itemsToCompare) => false;
+
+    return returnPromise;
   }
 
   stripName (name) {
@@ -94,7 +97,7 @@ class ThetaJoin extends JoinModel {
     if (!this.leftModel || !this.rightModel) {
       return;
     }
-    Promise.all([
+    return Promise.all([
       this.leftModel.allProperties(),
       this.rightModel.allProperties()
     ]).then(([leftProps, rightProps]) => {
@@ -123,7 +126,7 @@ class ThetaJoin extends JoinModel {
   }
   constructSqlExpression (joinExpression) {
     let self = this;
-    Promise.all([this.leftModel.allProperties(), this.rightModel.allProperties()])
+    return Promise.all([this.leftModel.allProperties(), this.rightModel.allProperties()])
       .then(([leftProps, rightProps]) => {
         // Start off with a full SQL expression (TODO: when we get to set operations
         // or attribute extraction, this will probably get more complicated...)
@@ -229,7 +232,7 @@ class ThetaJoin extends JoinModel {
         // Now that that's finally sorted, restart the connection computation process
         // (TODO: it will have already been started by changePreset() ... should clean
         // this up next refactor)
-        this.startComputingConnections(this.leftIndices, this.rightIndices, this.leftItems, this.rightItems);
+        return this.startComputingConnections(this.leftIndices, this.rightIndices, this.leftItems, this.rightItems);
       });
   }
 }
