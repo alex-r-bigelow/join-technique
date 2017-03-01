@@ -21,6 +21,15 @@ let PRESETS = {
 import hiddenIcon from '../../img/hide.svg';
 import visibleIcon from '../../img/show.svg';
 
+import emptyIndicator from '../../img/empty.svg';
+import loadingIndicator from '../../img/spinner.svg';
+import finishedIndicator from '../../img/checkMark.svg';
+let INDICATORS = {
+  EMPTY: emptyIndicator,
+  COMPUTING: loadingIndicator,
+  FINISHED: finishedIndicator
+};
+
 class JoinInterfaceView extends View {
   constructor (defaultLeftView, defaultRightView) {
     super();
@@ -122,7 +131,7 @@ class JoinInterfaceView extends View {
         this.joinModel.leftIndices, this.joinModel.rightIndices,
         this.joinModel.leftItems, this.joinModel.rightItems);
     }
-    this.joinModel.on('change', () => {
+    this.joinModel.on('update', () => {
       this.render();
     });
   }
@@ -233,6 +242,13 @@ class JoinInterfaceView extends View {
     d3el.select('#rightTitle')
       .text(this.joinModel.rightModel === null
         ? '(no data loaded)' : this.joinModel.rightModel.name);
+
+    d3el.select('#leftIndicator')
+      .attr('src', INDICATORS[this.joinModel.leftConnectionStatus]);
+    d3el.select('#rightIndicator')
+      .attr('src', INDICATORS[this.joinModel.rightConnectionStatus]);
+    d3el.select('#connectionIndicator')
+      .attr('src', INDICATORS[this.joinModel.visibleConnectionStatus]);
   }
   renderViewIcons (d3el) {
     let iconList = [{

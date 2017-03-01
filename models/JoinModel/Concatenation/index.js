@@ -10,6 +10,7 @@ class Concatenation extends JoinModel {
     return new Promise((resolve, reject) => {
       // The only connections that should show up are the custom ones
       this.computeVisibleCustomConnections();
+      resolve();
     });
   }
 }

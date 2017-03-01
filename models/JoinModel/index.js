@@ -33,12 +33,16 @@ class JoinModel extends Model {
     this.computeTimeout = setTimeout(() => {
       this.computeTimeout = null;
       this.computeConnections()
+        .then(() => { this.computePromise = null; })
         .then(resolveFunc);
     }, this.computeWait);
     return this.pauseWebWorkers().then(() => {
-      this.visibleConnectionStatus = JoinModel.STATUS.COMPUTING;
-      this.leftConnectionStatus = JoinModel.STATUS.COMPUTING;
-      this.rightConnectionStatus = JoinModel.STATUS.COMPUTING;
+      this.visibleConnectionStatus = this.leftModel && this.rightModel
+        ? JoinModel.STATUS.COMPUTING : JoinModel.STATUS.EMPTY;
+      this.leftConnectionStatus = this.leftModel
+        ? JoinModel.STATUS.COMPUTING : JoinModel.STATUS.EMPTY;
+      this.rightConnectionStatus = this.rightModel
+        ? JoinModel.STATUS.COMPUTING : JoinModel.STATUS.EMPTY;
 
       this.leftIndices = leftIndices;
       this.rightIndices = rightIndices;
@@ -71,15 +75,18 @@ class JoinModel extends Model {
   computeConnections () {
     return Promise.all([
       this.computeVisibleConnections().then(() => {
-        this.visibleConnectionStatus = JoinModel.STATUS.FINISHED;
+        this.visibleConnectionStatus = this.leftModel && this.rightModel
+          ? JoinModel.STATUS.FINISHED : JoinModel.STATUS.EMPTY;
         this.trigger('update');
       }),
       this.countAllConnections(JoinModel.SIDE.LEFT).then(() => {
-        this.leftConnectionStatus = JoinModel.STATUS.FINISHED;
+        this.leftConnectionStatus = this.leftModel
+          ? JoinModel.STATUS.FINISHED : JoinModel.STATUS.EMPTY;
         this.trigger('update');
       }),
       this.countAllConnections(JoinModel.SIDE.RIGHT).then(() => {
-        this.rightConnectionStatus = JoinModel.STATUS.FINISHED;
+        this.rightConnectionStatus = this.rightModel
+          ? JoinModel.STATUS.FINISHED : JoinModel.STATUS.EMPTY;
         this.trigger('update');
       })
     ]);
@@ -216,6 +223,7 @@ class JoinModel extends Model {
 }
 JoinModel.MAX_NAVIGATION_OFFSETS = 5;
 JoinModel.STATUS = {
+  EMPTY: 'EMPTY',
   FINISHED: 'FINISHED',
   COMPUTING: 'COMPUTING'
 };
