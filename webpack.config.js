@@ -1,4 +1,6 @@
 'use strict';
+
+var path = require('path');
 var webpack = require('webpack');
 var CleanWebpackPlugin = require('clean-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -9,12 +11,11 @@ module.exports = {
 
   output: {
     // Where to build results
-    path: './docs',
+    path: path.join(__dirname, 'docs'),
 
     // Filename to use in HTML
     filename: 'webpack-bundle.js'
   },
-  debug: true,
   devtool: 'cheap-source-map',
   plugins: [
     new CleanWebpackPlugin([
@@ -42,23 +43,23 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        loader: 'style-loader!css-loader'
+        use: ['style-loader', 'css-loader']
       },
       {
         test: /\.scss$/,
-        loaders: ['style-loader', 'css-loader', 'sass-loader']
+        use: ['style-loader', 'css-loader', 'sass-loader']
       },
       {
         test: /\.html$/,
-        loader: 'html?attrs=img:src'
+        loader: 'html-loader?attrs=img:src'
       },
       {
         test: /\.jpe?g$|\.gif$|\.png$|(?!template\b)\b\w+\.svg$|\.woff$|\.ttf$|\.wav$|\.mp3$/,
-        loader: 'url'
+        loader: 'url-loader'
       },
       {
         test: /template\.svg$/,
-        loader: 'html',
+        loader: 'html-loader',
         query: {
           attrs: 'image:xlink:href'
         }

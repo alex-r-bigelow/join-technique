@@ -41,11 +41,11 @@ class Overlay extends View {
     // Move all points where they need to be / animate everything
     points = pointsEnter.merge(points);
     points.attr('transform', d => 'translate(' + d.location.x + ',' + d.location.y + ')')
-      .classed('stillCounting', d => d.details.stillCounting)
+      .classed('stillCounting', d => !d.details || d.details.stillCounting)
       .transition(commonTransition)
       .style('opacity', 1);
     points.select('text')
-      .text(d => d.details.totalConnections);
+      .text(d => d.details ? d.details.totalConnections : 0);
   }
   drawLines (d3el, leftItems, rightItems, commonTransition) {
     let joinModel = this.joinInterfaceView.joinModel;
@@ -75,12 +75,12 @@ class Overlay extends View {
       connectedRightIndices[r] = true;
     });
     leftItems.forEach(item => {
-      if (!connectedLeftIndices[item.globalIndex] && item.details.navigationOffsets.length > 0) {
+      if (!connectedLeftIndices[item.globalIndex] && item.details && item.details.navigationOffsets.length > 0) {
         connections.push(item.globalIndex + '_' + item.details.navigationOffsets[0]);
       }
     });
     rightItems.forEach(item => {
-      if (!connectedRightIndices[item.globalIndex] && item.details.navigationOffsets.length > 0) {
+      if (!connectedRightIndices[item.globalIndex] && item.details && item.details.navigationOffsets.length > 0) {
         connections.push(item.details.navigationOffsets[0] + '_' + item.globalIndex);
       }
     });

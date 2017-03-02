@@ -2,23 +2,39 @@
 import template from './template.html';
 import './style.scss';
 
-import JoinModel from '../../models/JoinModel';
 import View from '../../lib/View';
 import JoinableView from '../JoinableView';
 import Overlay from './Overlay';
 import makeSelectMenu from '../../lib/makeSelectMenu';
 
+import Concatenation from '../../models/JoinModel/Concatenation';
+import OrderedJoin from '../../models/JoinModel/OrderedJoin';
+import CrossProduct from '../../models/JoinModel/CrossProduct';
+import ThetaJoin from '../../models/JoinModel/ThetaJoin';
+let PRESETS = {
+  Concatenation,
+  OrderedJoin,
+  CrossProduct,
+  ThetaJoin
+};
+
 import hiddenIcon from '../../img/hide.svg';
 import visibleIcon from '../../img/show.svg';
+
+import emptyIndicator from '../../img/empty.svg';
+import loadingIndicator from '../../img/spinner.svg';
+import finishedIndicator from '../../img/checkMark.svg';
+let INDICATORS = {
+  EMPTY: emptyIndicator,
+  COMPUTING: loadingIndicator,
+  FINISHED: finishedIndicator
+};
 
 class JoinInterfaceView extends View {
   constructor (defaultLeftView, defaultRightView) {
     super();
 
-    this.joinModel = new JoinModel(null, null);
-    this.joinModel.on('update', () => {
-      this.render();
-    });
+    this.changePreset('Concatenation');
 
     defaultLeftView.joinInterfaceView = this;
     this.leftViews = [defaultLeftView];
@@ -58,18 +74,18 @@ class JoinInterfaceView extends View {
     if (side === JoinInterfaceView.LEFT) {
       this.joinModel.leftModel = model;
       if (this.joinModel.rightModel && this.joinModel.rightModel.name === model.name) {
-        model.name += ' (2)';
+        model.name += '_2';
       }
     } else if (side === JoinInterfaceView.RIGHT) {
       this.joinModel.rightModel = model;
       if (this.joinModel.leftModel && this.joinModel.leftModel.name === model.name) {
-        model.name += ' (2)';
+        model.name += '_2';
       }
     } else {
       throw new Error('Unknown side: ' + side);
     }
-    // Clear all connections, and apply the default preset
-    this.joinModel.changePreset(JoinModel.PRESETS.CONCATENATION);
+    // Apply the default (empty) preset
+    this.changePreset('Concatenation');
   }
   getModel (side) {
     if (side instanceof JoinableView) {
@@ -99,6 +115,25 @@ class JoinInterfaceView extends View {
       throw new Error('Unknown side: ' + side);
     }
     this.render();
+  }
+  changePreset (preset) {
+    if (!this.joinModel) {
+      // Only happens when called from the constructor
+      this.joinModel = new PRESETS[preset]();
+    } else if (this.joinModel instanceof PRESETS[preset]) {
+      // Nothing is actually changing... so we can leave things as they were
+      return;
+    } else {
+      // TODO: this clears all the customizations; should we copy those to the
+      // new model as well?
+      this.joinModel = new PRESETS[preset](
+        this.joinModel.leftModel, this.joinModel.rightModel,
+        this.joinModel.leftIndices, this.joinModel.rightIndices,
+        this.joinModel.leftItems, this.joinModel.rightItems);
+    }
+    this.joinModel.on('update', () => {
+      this.render();
+    });
   }
   updateVisibleItems () {
     let leftIndices = this.showLeftView ? this.leftViews[this.currentLeftView].globalIndices : [];
@@ -144,11 +179,35 @@ class JoinInterfaceView extends View {
   }
   setup (d3el) {
     d3el.html(template);
-    makeSelectMenu(d3el.select('.selectMenu').node());
+    makeSelectMenu(d3el.select('#presetSettings').node());
     let self = this;
-    d3el.select('.selectMenu').on('change', function () {
+    let thetaExpressionElement = d3el.select('#thetaExpression');
+    d3el.select('#presetSettings').on('change', function () {
       // this refers to the DOM element
-      self.joinModel.changePreset(this.value);
+      self.changePreset(this.value);
+      if (this.value === 'ThetaJoin') {
+        thetaExpressionElement.style('display', null);
+        let oldExpression = thetaExpressionElement.property('value');
+        if (!oldExpression) {
+          self.joinModel.autoInferThetaExpression(expression => {
+            thetaExpressionElement.property('value', expression);
+            self.joinModel.setExpression(expression)
+              .then(() => { self.render(); });
+          });
+        } else {
+          self.joinModel.setExpression(oldExpression)
+            .then(() => { self.render(); });
+        }
+      } else {
+        thetaExpressionElement.style('display', 'none');
+      }
+      self.render();
+    });
+    thetaExpressionElement.on('change', function () {
+      // this refers to the DOM element
+      self.joinModel.setExpression(this.value)
+        .then(() => { self.render(); });
+      self.render();
     });
   }
   draw (d3el) {
@@ -156,11 +215,12 @@ class JoinInterfaceView extends View {
     let bounds = d3el.select('#views').node().getBoundingClientRect();
     let overlayEl = d3el.select('#overlay')
       .attr('width', bounds.width)
-      .attr('height', bounds.height);
+      .attr('height', bounds.height)
+      .attr('viewBox', bounds.left + ' ' + bounds.top + ' ' + bounds.width + ' ' + bounds.height);
 
     this.renderEachView(d3el);
     this.overlay.render(overlayEl);
-    this.renderFooter(d3el);
+    this.renderHeader(d3el);
   }
   renderEachView (d3el) {
     d3el.select('#leftView').classed('collapsed', !this.showLeftView);
@@ -174,8 +234,21 @@ class JoinInterfaceView extends View {
       this.rightViews[this.currentRightView].render(d3el.select('#rightView'));
     }
   }
-  renderFooter (d3el) {
+  renderHeader (d3el) {
     this.renderViewIcons(d3el);
+    d3el.select('#leftTitle')
+      .text(this.joinModel.leftModel === null
+        ? '(no data loaded)' : this.joinModel.leftModel.name);
+    d3el.select('#rightTitle')
+      .text(this.joinModel.rightModel === null
+        ? '(no data loaded)' : this.joinModel.rightModel.name);
+
+    d3el.select('#leftIndicator')
+      .attr('src', INDICATORS[this.joinModel.leftConnectionStatus]);
+    d3el.select('#rightIndicator')
+      .attr('src', INDICATORS[this.joinModel.rightConnectionStatus]);
+    d3el.select('#connectionIndicator')
+      .attr('src', INDICATORS[this.joinModel.visibleConnectionStatus]);
   }
   renderViewIcons (d3el) {
     let iconList = [{

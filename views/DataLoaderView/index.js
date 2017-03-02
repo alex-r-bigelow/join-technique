@@ -24,13 +24,6 @@ class DataLoaderView extends JoinableView {
     d3el.html(template);
   }
   draw (d3el) {
-    d3el.select('#status').text(() => {
-      if (this.model) {
-        return 'Loaded: ' + this.model.name;
-      } else {
-        return 'No data loaded';
-      }
-    });
     this.page.render(d3el.select('#pageContent'));
     d3el.select('#backButton')
       .style('display', this.page.prevPage === null ? 'none' : null)
@@ -71,7 +64,7 @@ class DataLoaderView extends JoinableView {
     this.setPage(new ParsePage(this, this));
   }
   loadEmptyTable () {
-    let testTable = 'this,is,a,test,to,see,if,the,table,behaves';
+    let testTable = 'this is,a,test,to,see,if,the,table,behaves';
     let ec = testTable.split(',').length - 1;
     for (let r = 0; r < 200; r += 1) {
       testTable += '\n' + r;

@@ -50,6 +50,7 @@ class DataTableView extends JoinableView {
       columnSorting: true,
       sortIndicator: true
     });
+    this.handsontable.addHook('afterColumnSort', () => { this.render(); });
 
     // TODO: remove this debugging line
     window.temphandsontable = this.handsontable;
@@ -164,9 +165,12 @@ class DataTableView extends JoinableView {
           x: xPosition,
           y: rowBBox.top + rowBBox.height / 2
         };
-        // Rows that don't have their center point visible should start
-        // disappearing
-        location.transitioning = location.y < headerBBox.bottom || location.y > tableBBox.bottom;
+        // Rows that have their center point obscured by the scroll bar
+        // should start disappearing
+        location.transitioning = location.y > tableBBox.bottom - self.scrollBarSize;
+        // Rows that have their center point above the bottom of the header
+        // should start disappearing
+        location.transitioning = location.transitioning || location.y < headerBBox.bottom;
         self.visibleLocations[index] = location;
         if (!location.transitioning) {
           self.globalIndices.push(index);

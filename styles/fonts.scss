@@ -46,3 +46,9 @@ a {
   color: $linkColor;
   cursor: pointer;
 }
+input {
+  font-size: 1em;
+  &:focus {
+    outline: 2px solid $lightUiColor;
+  }
+}

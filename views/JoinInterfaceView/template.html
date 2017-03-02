@@ -3,29 +3,37 @@
   <div id="rightView"></div>
 </div>
 <svg id="overlay"></svg>
-<div id="presetSettings">
-  <ol class="selectMenu">
-    <li id="CONCATENATION" class="selected">
+<div id="header">
+  <div id="leftButtonContainer" class="buttonContainer"></div>
+  <h2 id="leftTitle" class="title"></h2>
+  <div class="indicator">
+    <img id="leftIndicator"/>
+  </div>
+  <ol class="selectMenu" id="presetSettings">
+    <li id="Concatenation" class="selected">
       <img src="../../img/concatenate.svg"/>
       <span>No preset connections</span>
     </li>
-    <li id="ORDERED_JOIN">
-      <img src="../../img/ordered.svg"/>
-      <span>Preset: Connect in order</span>
-    </li>
-    <li id="CROSS_PRODUCT">
-      <img src="../../img/crossProduct.svg"/>
-      <span>Preset: All possible connections</span>
-    </li>
-    <li id="THETA_JOIN">
+    <li id="ThetaJoin">
       <img src="../../img/thetaJoin.svg"/>
       <span>Preset: Connect when...</span>
     </li>
+    <li id="OrderedJoin">
+      <img src="../../img/ordered.svg"/>
+      <span>Preset: Connect in order</span>
+    </li>
+    <li id="CrossProduct">
+      <img src="../../img/crossProduct.svg"/>
+      <span>Preset: All possible connections</span>
+    </li>
   </ol>
-</div>
-<div id="footer">
-  <div id="leftButtonContainer"></div>
-  <div id="topology"></div>
-  <div id="setops"></div>
-  <div id="rightButtonContainer"></div>
+  <div class="indicator">
+    <img id="connectionIndicator"/>
+  </div>
+  <input type="text" id="thetaExpression" style="display: none"/>
+  <div class="indicator">
+    <img id="rightIndicator"/>
+  </div>
+  <h2 id="rightTitle" class="title"></h2>
+  <div id="rightButtonContainer" class="buttonContainer"></div>
 </div>

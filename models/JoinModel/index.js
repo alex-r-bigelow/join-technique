@@ -1,40 +1,54 @@
 import Model from '../../lib/Model';
-import sqlParser from 'sql-parser';
-import sqlOpToFunction from '../../lib/sqlOpToFunction';
-// let sideConnectionWorker = require('worker-loader!./sideConnectionWorker.js');
-
-// TODO: remove these two debugging lines
-window.sqlOpToFunction = sqlOpToFunction;
-window.sqlParser = sqlParser;
-
-let NUM_NAVIGATION_OFFSETS = 5;
 
 class JoinModel extends Model {
-  constructor (leftModel, rightModel) {
+  constructor (leftModel, rightModel, leftIndices, rightIndices, leftItems, rightItems) {
     super();
-    this.leftModel = leftModel;
-    this.rightModel = rightModel;
+    this.requireProperties(['countAllPresetConnections', 'computeVisibleConnections']);
+    this.leftModel = leftModel || null;
+    this.rightModel = rightModel || null;
 
-    this.currentPreset = JoinModel.PRESETS.CONCATENATION;
-    this.onCondition = null;
-    this.onConditionFunc = (itemsToCompare) => false;
+    leftIndices = leftIndices || [];
+    rightIndices = rightIndices || [];
+    leftItems = leftItems || [];
+    rightItems = rightItems || [];
+
+    this.computeWait = 200;
+    this.computePromise = null;
 
     // each of these is keyed by "globalLeftIndex_globalRightIndex"
     this.customConnections = {};
     this.customRemovals = {};
 
-    this.startComputingConnections([], [], [], []);
+    this.startComputingConnections(leftIndices, rightIndices, leftItems, rightItems);
   }
   startComputingConnections (leftIndices, rightIndices, leftItems, rightItems) {
+    // Debounce multiple calls to computeConnections
+    let resolveFunc;
+    if (this.computePromise === null) {
+      this.computePromise = new Promise((resolve, reject) => {
+        resolveFunc = resolve;
+      });
+    }
+    clearTimeout(this.computeTimeout);
+    this.computeTimeout = setTimeout(() => {
+      this.computeTimeout = null;
+      this.computeConnections()
+        .then(() => { this.computePromise = null; })
+        .then(resolveFunc);
+    }, this.computeWait);
     return this.pauseWebWorkers().then(() => {
+      this.visibleConnectionStatus = this.leftModel && this.rightModel
+        ? JoinModel.STATUS.COMPUTING : JoinModel.STATUS.EMPTY;
+      this.leftConnectionStatus = this.leftModel
+        ? JoinModel.STATUS.COMPUTING : JoinModel.STATUS.EMPTY;
+      this.rightConnectionStatus = this.rightModel
+        ? JoinModel.STATUS.COMPUTING : JoinModel.STATUS.EMPTY;
+
       this.leftIndices = leftIndices;
       this.rightIndices = rightIndices;
       this.leftItems = leftItems;
       this.rightItems = rightItems;
       this.visiblePresetConnections = {};
-      this.visibleConnectionStatus = JoinModel.STATUS.COMPUTING;
-      this.leftConnectionStatus = JoinModel.STATUS.COMPUTING;
-      this.rightConnectionStatus = JoinModel.STATUS.COMPUTING;
 
       function initLookup (olddetails, indices) {
         // TODO: keep information from paused counting passes
@@ -55,19 +69,27 @@ class JoinModel extends Model {
       this.leftLookup = initLookup(this.leftLookup, this.leftIndices);
       this.rightLookup = initLookup(this.rightLookup, this.rightIndices);
 
-      this.computeVisibleConnections().then(() => {
-        this.visibleConnectionStatus = JoinModel.STATUS.FINISHED;
-        this.trigger('update');
-      });
-      this.countAllConnections(JoinModel.SIDE.LEFT).then(() => {
-        this.leftConnectionStatus = JoinModel.STATUS.FINISHED;
-        this.trigger('update');
-      });
-      this.countAllConnections(JoinModel.SIDE.RIGHT).then(() => {
-        this.rightConnectionStatus = JoinModel.STATUS.FINISHED;
-        this.trigger('update');
-      });
+      return this.computePromise;
     });
+  }
+  computeConnections () {
+    return Promise.all([
+      this.computeVisibleConnections().then(() => {
+        this.visibleConnectionStatus = this.leftModel && this.rightModel
+          ? JoinModel.STATUS.FINISHED : JoinModel.STATUS.EMPTY;
+        this.trigger('update');
+      }),
+      this.countAllConnections(JoinModel.SIDE.LEFT).then(() => {
+        this.leftConnectionStatus = this.leftModel
+          ? JoinModel.STATUS.FINISHED : JoinModel.STATUS.EMPTY;
+        this.trigger('update');
+      }),
+      this.countAllConnections(JoinModel.SIDE.RIGHT).then(() => {
+        this.rightConnectionStatus = this.rightModel
+          ? JoinModel.STATUS.FINISHED : JoinModel.STATUS.EMPTY;
+        this.trigger('update');
+      })
+    ]);
   }
   changeFocusItems (leftIndices, rightIndices) {
     let leftItems = this.leftModel ? this.leftModel.getItems(leftIndices) : Promise.resolve([]);
@@ -76,44 +98,6 @@ class JoinModel extends Model {
       .then(([leftItems, rightItems]) => {
         this.startComputingConnections(leftIndices, rightIndices, leftItems, rightItems);
       });
-  }
-  changePreset (preset, onCondition) {
-    if (this.currentPreset === preset && this.onCondition === onCondition) {
-      // Nothing is actually changing... so we can leave things as they were
-      return;
-    }
-    this.currentPreset = preset;
-    // Changing the preset invalidates the customizations; clear them:
-    this.customRemovals = {};
-    this.customConnections = {};
-    switch (preset) {
-      case JoinModel.PRESETS.EQUIJOIN:
-      case JoinModel.PRESETS.THETA_JOIN:
-        if (!onCondition) {
-          throw new Error('TODO: Have not yet implemented auto-inference of join expressions');
-        }
-        this.onCondition = onCondition;
-        this.onConditionFunc = sqlOpToFunction(sqlParser(onCondition));
-        break;
-      case JoinModel.PRESETS.CROSS_PRODUCT:
-        this.onCondition = null;
-        this.onConditionFunc = (itemsToCompare) => true;
-        break;
-      case JoinModel.PRESETS.ORDERED_JOIN:
-        this.onCondition = null;
-        this.onConditionFunc = (itemsToCompare) => {
-          let keys = Object.keys(itemsToCompare);
-          return itemsToCompare[keys[0]].index === itemsToCompare[keys[1]].index;
-        };
-        break;
-      case JoinModel.PRESETS.CONCATENATION:
-        this.onCondition = null;
-        this.onConditionFunc = (itemsToCompare) => false;
-        break;
-      default:
-        throw new Error('Unknown preset: ' + this.currentPreset);
-    }
-    this.startComputingConnections(this.leftIndices, this.rightIndices, this.leftItems, this.rightItems);
   }
   pauseWebWorkers () {
     // TODO
@@ -148,31 +132,22 @@ class JoinModel extends Model {
       });
     }
   }
-  computeVisibleConnections () {
-    return new Promise((resolve, reject) => {
-      this.leftIndices.forEach((globalLeftIndex, localLeftIndex) => {
-        this.rightIndices.forEach((globalRightIndex, localRightIndex) => {
-          let itemsToCompare = {};
-          itemsToCompare[this.leftModel.name] = {
-            index: globalLeftIndex,
-            item: this.leftItems[localLeftIndex]
-          };
-          itemsToCompare[this.rightModel.name] = {
-            index: globalRightIndex,
-            item: this.rightItems[localRightIndex]
-          };
-          let connectionKey = globalLeftIndex + '_' + globalRightIndex;
-          if (this.customConnections[connectionKey] ||
-                (!this.customRemovals[connectionKey] && this.onConditionFunc(itemsToCompare))) {
-            let leftItemDetails = this.leftLookup[globalLeftIndex];
-            leftItemDetails.visiblePresetConnectionKeys.push(connectionKey);
-            let rightItemDetails = this.rightLookup[globalRightIndex];
-            rightItemDetails.visiblePresetConnectionKeys.push(connectionKey);
-            this.visiblePresetConnections[connectionKey] = true;
-          }
-        });
-      });
-      resolve();
+  createVisibleConnection (globalLeftIndex, globalRightIndex) {
+    let connectionKey = globalLeftIndex + '_' + globalRightIndex;
+    let leftItemDetails = this.leftLookup[globalLeftIndex];
+    leftItemDetails.visiblePresetConnectionKeys.push(connectionKey);
+    let rightItemDetails = this.rightLookup[globalRightIndex];
+    rightItemDetails.visiblePresetConnectionKeys.push(connectionKey);
+    this.visiblePresetConnections[connectionKey] = true;
+  }
+  computeVisibleCustomConnections () {
+    Object.keys(this.customConnections).forEach(connectionKey => {
+      let [globalLeftIndex, globalRightIndex] = connectionKey.split('_');
+      globalLeftIndex = parseInt(globalLeftIndex);
+      globalRightIndex = parseInt(globalRightIndex);
+      if (this.leftIndices.indexOf(globalLeftIndex) !== -1 && this.rightIndices.indexOf(globalRightIndex)) {
+        this.createVisibleConnection(globalLeftIndex, globalRightIndex);
+      }
     });
   }
   countAllConnections (side) {
@@ -201,7 +176,7 @@ class JoinModel extends Model {
       items = this.rightItems;
       lookup = this.rightLookup;
       modelName = this.rightModel.name;
-      oppositeModel = this.rightModel;
+      oppositeModel = this.leftModel;
       extractIndices = k => {
         let [left, right] = k.split('_');
         return {
@@ -212,72 +187,11 @@ class JoinModel extends Model {
     }
     let resultPromise;
     if (oppositeModel === null) {
-      // okay, there are no connections to count, but one side at least should
+      // okay, there are no connections to count, but this side at least should
       // be marked as finished
       resultPromise = Promise.resolve();
     } else {
-      switch (this.currentPreset) {
-        case JoinModel.PRESETS.EQUIJOIN:
-        case JoinModel.PRESETS.THETA_JOIN:
-          // Attribute-based presets require a full table scan
-          resultPromise = oppositeModel.fullScan(chunk => {
-            // TODO: do this behind the scenes in a web worker so it doesn't lock up the UI
-            chunk.data.forEach((oppItem, localOppIndex) => {
-              let globalOppIndex = localOppIndex + chunk.globalStartIndex;
-              indices.forEach((globalIndex, localIndex) => {
-                let itemsToCompare = {};
-                itemsToCompare[modelName] = {
-                  index: globalIndex,
-                  item: items[localIndex]
-                };
-                itemsToCompare[oppositeModel.name] = {
-                  index: globalOppIndex,
-                  item: oppItem
-                };
-                let details = lookup[globalIndex];
-                if (!this.indexInRanges(globalOppIndex, details.scannedRanges) &&
-                    this.onConditionFunc(itemsToCompare)) {
-                  details.totalConnections += 1;
-                  if (details.navigationOffsets.length < NUM_NAVIGATION_OFFSETS) {
-                    details.navigationOffsets.push(globalOppIndex);
-                  }
-                }
-              });
-            });
-            // Incrementally update the interface after each chunk has been processed
-            this.trigger('update');
-          });
-          break;
-        case JoinModel.PRESETS.CROSS_PRODUCT:
-          // We already know the total count (the size of all items in the opposite set)
-          resultPromise = oppositeModel.numTotalItems().then(count => {
-            indices.forEach((globalIndex, localIndex) => {
-              let details = lookup[globalIndex];
-              details.totalConnections = count;
-              details.navigationOffsets = []; // including offsets is kind of pointless, so don't bother
-            });
-          });
-          break;
-        case JoinModel.PRESETS.ORDERED_JOIN:
-          // We already know the total count (1), and which connection to jump to just
-          // by the global index number
-          resultPromise = new Promise((resolve, reject) => {
-            indices.forEach((globalIndex, localIndex) => {
-              let details = lookup[globalIndex];
-              details.totalConnections = 1;
-              details.navigationOffsets = [globalIndex];
-            });
-            resolve();
-          });
-          break;
-        case JoinModel.PRESETS.CONCATENATION:
-          // There are no connections; numPresetConnections and navigationOffsets are already
-          // correct (0 and empty)
-          resultPromise = Promise.resolve();
-          break;
-        default:
-          throw new Error('Unknown preset: ' + this.currentPreset);
-      }
+      resultPromise = this.countAllPresetConnections(indices, items, lookup, modelName, oppositeModel);
       resultPromise = resultPromise.then(() => {
         // Run through the custom removals and additions to update the totals
         Object.keys(this.customRemovals).forEach(k => {
@@ -293,7 +207,7 @@ class JoinModel extends Model {
           k = extractIndices(k);
           let details = lookup[k.globalIndex];
           details.totalConnections += 1;
-          if (details.navigationOffsets.length < NUM_NAVIGATION_OFFSETS) {
+          if (details.navigationOffsets.length < JoinModel.MAX_NAVIGATION_OFFSETS) {
             details.navigationOffsets.push(k.globalOppIndex);
           }
         });
@@ -307,14 +221,9 @@ class JoinModel extends Model {
     });
   }
 }
-JoinModel.PRESETS = {
-  EQUIJOIN: 'EQUIJOIN',
-  THETA_JOIN: 'THETA_JOIN',
-  CROSS_PRODUCT: 'CROSS_PRODUCT',
-  ORDERED_JOIN: 'ORDERED_JOIN',
-  CONCATENATION: 'CONCATENATION'
-};
+JoinModel.MAX_NAVIGATION_OFFSETS = 5;
 JoinModel.STATUS = {
+  EMPTY: 'EMPTY',
   FINISHED: 'FINISHED',
   COMPUTING: 'COMPUTING'
 };

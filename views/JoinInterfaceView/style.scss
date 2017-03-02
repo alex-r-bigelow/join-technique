@@ -1,12 +1,12 @@
 @import '../../styles/colors.scss';
-$footerSize: 4em;
+$headerSize: 4em;
 
 #views {
   position: absolute;
-  top: 1em;
+  bottom: 1em;
   left: 0px;
   right: 0px;
-  bottom: $footerSize;
+  top: $headerSize;
 
   #leftView, #rightView {
     position: absolute;
@@ -32,38 +32,9 @@ $footerSize: 4em;
   }
 }
 
-#presetSettings {
-  position: absolute;
-  top: 0px;
-  left: calc(33% + 2em);
-  width: calc(33% - 3.5em);
-  li {
-    line-height: 1em;
-    img {
-      display: none;
-    }
-    span {
-      position: relative;
-      bottom: 0em;
-    }
-  }
-  .selectMenu.expanded {
-    li {
-      img {
-        display: inline-block;
-        width: 6em;
-        height: 6em;
-      }
-      span {
-        bottom: 2.5em;
-      }
-    }
-  }
-}
-
 #overlay {
   position: absolute;
-  top: 0px;
+  top: $headerSize;
   left: 0px;
   /* width and height have to be set manually, because it's an SVG element */
   pointer-events: none;
@@ -110,19 +81,20 @@ $footerSize: 4em;
   pointer-events: visible;
 }
 
-#footer {
+#header {
   position: absolute;
   left: 0px;
   right: 0px;
-  bottom: 0px;
-  height: $footerSize;
+  top: 0px;
+  z-index: 200; /* this is necessary to avoid having the table column headers overlap */
+  height: $headerSize;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  align-items: stretch;
 
-  div {
+  .buttonContainer {
     position: relative;
+    margin: 1em;
 
     img {
       position: relative;
@@ -130,22 +102,67 @@ $footerSize: 4em;
       width: 1.5em;
       height: 1.5em;
       padding: 0em 0.25em;
-      cursor: pointer;
       border: 1px solid transparent;
       filter: imgColorFilter($darkUiColor);
     }
     img.inactive {
       filter: imgColorFilter($lightUiColor);
     }
+
     img:hover {
       border: 1px solid #cccccc;
+      cursor: pointer;
     }
   }
 
-  #leftButtonContainer {
-    margin-left: 0.25em;
+  .indicator {
+    img {
+      position: relative;
+      top: calc(50% - 0.75em);
+      width: 1.5em;
+      height: 1.5em;
+      padding: 0em 0.25em;
+      border: 1px solid transparent;
+      filter: imgColorFilter($darkUiColor);
+    }
   }
-  #rightButtonContainer {
-    margin-right: 0.25em;
+
+  #presetSettings {
+    position: relative;
+    li {
+      line-height: 1em;
+      img {
+        display: none;
+      }
+      span {
+        position: relative;
+        bottom: 0em;
+      }
+    }
+    &.expanded {
+      li {
+        img {
+          display: inline-block;
+          width: 6em;
+          height: 6em;
+        }
+        span {
+          bottom: 2.5em;
+        }
+      }
+    }
+  }
+
+  #thetaExpression {
+    height: 1em;
+    width: 30em;
+    font-family: "Courier", monospace;
+    padding: 0.5em 0.5em 0.25em 0.5em;
+    margin: 1em;
+    border: 1px solid $darkUiColor;
+  }
+
+  .title {
+    margin: 0.75em 1em 1em 1em;
   }
 }
