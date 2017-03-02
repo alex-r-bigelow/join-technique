@@ -18,9 +18,6 @@ let PRESETS = {
   ThetaJoin
 };
 
-import hiddenIcon from '../../img/hide.svg';
-import visibleIcon from '../../img/show.svg';
-
 import emptyIndicator from '../../img/empty.svg';
 import loadingIndicator from '../../img/spinner.svg';
 import finishedIndicator from '../../img/checkMark.svg';
