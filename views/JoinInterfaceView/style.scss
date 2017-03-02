@@ -21,15 +21,6 @@ $headerSize: 4em;
   #rightView {
     right: 1em;
   }
-  #rightView.collapsed,
-  #leftView.collapsed {
-    display: none;
-  }
-  #rightView.focused,
-  #leftView.focused {
-    left: 1em;
-    width: calc(100% - 2em);
-  }
 }
 
 #overlay {

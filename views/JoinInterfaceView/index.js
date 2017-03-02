@@ -39,12 +39,10 @@ class JoinInterfaceView extends View {
     defaultLeftView.joinInterfaceView = this;
     this.leftViews = [defaultLeftView];
     this.currentLeftView = 0;
-    this.showLeftView = true;
 
     defaultRightView.joinInterfaceView = this;
     this.rightViews = [defaultRightView];
     this.currentRightView = 0;
-    this.showRightView = true;
 
     this.overlay = new Overlay(this);
   }
@@ -136,8 +134,8 @@ class JoinInterfaceView extends View {
     });
   }
   updateVisibleItems () {
-    let leftIndices = this.showLeftView ? this.leftViews[this.currentLeftView].globalIndices : [];
-    let rightIndices = this.showRightView ? this.rightViews[this.currentRightView].globalIndices : [];
+    let leftIndices = this.leftViews[this.currentLeftView].globalIndices;
+    let rightIndices = this.rightViews[this.currentRightView].globalIndices;
     this.joinModel.changeFocusItems(leftIndices, rightIndices);
   }
   getVisibleItemDetails (side) {
@@ -148,17 +146,13 @@ class JoinInterfaceView extends View {
     let globalIndexToLocation = {};
     let globalIndexToDetails = {};
     if (side === JoinInterfaceView.LEFT) {
-      if (this.showLeftView) {
-        localToGlobalIndex = this.leftViews[this.currentLeftView].globalIndices;
-        globalIndexToLocation = this.leftViews[this.currentLeftView].visibleLocations;
-        globalIndexToDetails = this.joinModel.leftLookup;
-      }
+      localToGlobalIndex = this.leftViews[this.currentLeftView].globalIndices;
+      globalIndexToLocation = this.leftViews[this.currentLeftView].visibleLocations;
+      globalIndexToDetails = this.joinModel.leftLookup;
     } else if (side === JoinInterfaceView.RIGHT) {
-      if (this.showRightView) {
-        localToGlobalIndex = this.rightViews[this.currentRightView].globalIndices;
-        globalIndexToLocation = this.rightViews[this.currentRightView].visibleLocations;
-        globalIndexToDetails = this.joinModel.rightLookup;
-      }
+      localToGlobalIndex = this.rightViews[this.currentRightView].globalIndices;
+      globalIndexToLocation = this.rightViews[this.currentRightView].visibleLocations;
+      globalIndexToDetails = this.joinModel.rightLookup;
     } else {
       throw new Error('Unknown side: ' + side);
     }
@@ -223,16 +217,8 @@ class JoinInterfaceView extends View {
     this.renderHeader(d3el);
   }
   renderEachView (d3el) {
-    d3el.select('#leftView').classed('collapsed', !this.showLeftView);
-    d3el.select('#leftView').classed('focused', !this.showRightView);
-    d3el.select('#rightView').classed('collapsed', !this.showRightView);
-    d3el.select('#rightView').classed('focused', !this.showLeftView);
-    if (this.showLeftView) {
-      this.leftViews[this.currentLeftView].render(d3el.select('#leftView'));
-    }
-    if (this.showRightView) {
-      this.rightViews[this.currentRightView].render(d3el.select('#rightView'));
-    }
+    this.leftViews[this.currentLeftView].render(d3el.select('#leftView'));
+    this.rightViews[this.currentRightView].render(d3el.select('#rightView'));
   }
   renderHeader (d3el) {
     this.renderViewIcons(d3el);
@@ -251,19 +237,13 @@ class JoinInterfaceView extends View {
       .attr('src', INDICATORS[this.joinModel.visibleConnectionStatus]);
   }
   renderViewIcons (d3el) {
-    let iconList = [{
-      icon: this.showLeftView ? visibleIcon : hiddenIcon
-    }, ...this.leftViews];
     let leftIcons = d3el.select('#leftButtonContainer')
       .selectAll('.viewIcon')
-      .data(iconList);
+      .data(this.leftViews);
 
-    iconList = [{
-      icon: this.showRightView ? visibleIcon : hiddenIcon
-    }, ...this.rightViews];
     let rightIcons = d3el.select('#rightButtonContainer')
       .selectAll('.viewIcon')
-      .data(iconList);
+      .data(this.rightViews);
 
     // Funky way to create / setup common stuff to both sets of icons...
     let temp = [leftIcons, rightIcons].map(icons => {
@@ -279,34 +259,25 @@ class JoinInterfaceView extends View {
     rightIcons = temp[1];
 
     leftIcons
-      .classed('inactive', !this.showLeftView)
-      .on('click', (d, i) => {
-        if (d instanceof JoinableView) {
-          this.currentLeftView = i - 1;
-          this.showLeftView = true;
-        } else {
-          this.showLeftView = !this.showLeftView;
-          if (!this.showLeftView) {
-            this.showRightView = true;
-          }
-        }
+      .classed('inactive', (d, i) => {
+        // if there's no left model loaded, only enable the first (loading) view
+        return !this.joinModel.leftModel && i > 0;
+      }).on('click', (d, i) => {
+        this.currentLeftView = i;
+        this.leftViews[this.currentLeftView].dirty = true;
+        this.leftViews[this.currentLeftView].render();
         this.updateVisibleItems();
-        this.render();
       });
     rightIcons
-      .classed('inactive', !this.showRightView)
+      .classed('inactive', (d, i) => {
+        // if there's no left model loaded, only enable the first (loading) view
+        return !this.joinModel.rightModel && i > 0;
+      })
       .on('click', (d, i) => {
-        if (d instanceof JoinableView) {
-          this.currentRightView = i - 1;
-          this.showRightView = true;
-        } else {
-          this.showRightView = !this.showRightView;
-          if (!this.showRightView) {
-            this.showLeftView = true;
-          }
-        }
+        this.currentRightView = i;
+        this.rightViews[this.currentRightView].dirty = true;
+        this.rightViews[this.currentRightView].render();
         this.updateVisibleItems();
-        this.render();
       });
   }
 }
