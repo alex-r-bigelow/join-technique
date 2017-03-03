@@ -6,6 +6,10 @@
   height: 100%;
   overflow: auto;
   background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAIklEQVQoU2P8////fwY0wMjIyIghNhQUojsaxMfq7iGgEABK7if3fYro4QAAAABJRU5ErkJggg==) repeat;
+
+  .notUnderSelectedRoot {
+    opacity: 0.25;
+  }
 }
 #zoomControls {
   position: absolute;

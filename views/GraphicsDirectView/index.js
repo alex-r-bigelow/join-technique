@@ -1,3 +1,4 @@
+import * as d3 from '../../lib/d3.min.js';
 import JoinableView from '../JoinableView';
 
 import template from './template.html';
@@ -29,10 +30,8 @@ class GraphicsDirectView extends JoinableView {
     // don't (in that case, the SVG auto-scales to its container, which we don't
     // want). Otherwise, we'll use the results of getBoundingClientRect()
     let svgEl = d3el.select('svg');
-    this.nativeWidth = svgEl.attr('width');
-    this.nativeHeight = svgEl.attr('height');
     if (svgEl.attr('viewBox') && !svgEl.attr('width') && !svgEl.attr('height')) {
-      let viewBox = svgEl.attr('viewBox').split();
+      let viewBox = svgEl.attr('viewBox').split(' ');
       this.nativeWidth = parseInt(viewBox[2]);
       this.nativeHeight = parseInt(viewBox[3]);
     } else {
@@ -62,6 +61,24 @@ class GraphicsDirectView extends JoinableView {
     });
   }
   draw (d3el) {
+    d3el.selectAll('.notUnderSelectedRoot')
+      .classed('notUnderSelectedRoot', false);
+
+    let graphicsContent = d3el.select('#graphicsContent');
+    function deemphasizeSiblings (element) {
+      if (element === graphicsContent.node()) {
+        return;
+      }
+      Array.from(element.parentElement.children).forEach(sibling => {
+        if (sibling !== element) {
+          d3.select(sibling).classed('notUnderSelectedRoot', true);
+        }
+      });
+      deemphasizeSiblings(element.parentElement);
+    }
+    let selectedRoot = d3el.select('#graphicsContent')
+      .select(this.model.rootSelector).node();
+    deemphasizeSiblings(selectedRoot);
     this.updateVisibleLocations(d3el);
   }
   zoom (d3el, percent) {
