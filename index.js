@@ -23,12 +23,16 @@ recolorImages(colorScheme);
 import JoinInterfaceView from './views/JoinInterfaceView';
 import DataLoaderView from './views/DataLoaderView';
 import DataTableView from './views/DataTableView';
+import GraphicsLoaderView from './views/GraphicsLoaderView';
+import GraphicsDirectView from './views/GraphicsDirectView';
+import GraphicsTreeView from './views/GraphicsTreeView';
 
 class Tool {
   constructor () {
-    this.joinInterfaceView = new JoinInterfaceView(new DataLoaderView(), new DataLoaderView());
+    this.joinInterfaceView = new JoinInterfaceView(new DataLoaderView(), new GraphicsLoaderView());
     this.joinInterfaceView.addView(JoinInterfaceView.LEFT, new DataTableView());
-    this.joinInterfaceView.addView(JoinInterfaceView.RIGHT, new DataTableView());
+    this.joinInterfaceView.addView(JoinInterfaceView.RIGHT, new GraphicsDirectView());
+    this.joinInterfaceView.addView(JoinInterfaceView.RIGHT, new GraphicsTreeView());
 
     jQuery('#joinInterfaceView').resizable({
       handleSelector: '#splitter',

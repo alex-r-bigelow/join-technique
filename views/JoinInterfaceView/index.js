@@ -260,10 +260,12 @@ class JoinInterfaceView extends View {
         // if there's no left model loaded, only enable the first (loading) view
         return !this.joinModel.leftModel && i > 0;
       }).on('click', (d, i) => {
-        this.currentLeftView = i;
-        this.leftViews[this.currentLeftView].dirty = true;
-        this.leftViews[this.currentLeftView].render();
-        this.updateVisibleItems();
+        if (this.joinModel.leftModel || i === 0) {
+          this.currentLeftView = i;
+          this.leftViews[this.currentLeftView].dirty = true;
+          this.leftViews[this.currentLeftView].render(d3el.select('#leftView'));
+          this.updateVisibleItems();
+        }
       });
     rightIcons
       .classed('inactive', (d, i) => {
@@ -271,10 +273,12 @@ class JoinInterfaceView extends View {
         return !this.joinModel.rightModel && i > 0;
       })
       .on('click', (d, i) => {
-        this.currentRightView = i;
-        this.rightViews[this.currentRightView].dirty = true;
-        this.rightViews[this.currentRightView].render();
-        this.updateVisibleItems();
+        if (this.joinModel.rightModel || i === 0) {
+          this.currentRightView = i;
+          this.rightViews[this.currentRightView].dirty = true;
+          this.rightViews[this.currentRightView].render(d3el.select('#rightView'));
+          this.updateVisibleItems();
+        }
       });
   }
 }
