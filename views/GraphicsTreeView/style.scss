@@ -10,10 +10,15 @@
   overflow: auto;
 
   details {
-    background-color: $darkUiColor;
-    color: $White;
+    background-color: $lightUiColor;
+    color: $Black;
     position: relative;
     border-top: 1px solid $pageBackgroundColor;
+
+    &.isJoinable {
+      background-color: $darkUiColor;
+      color: $White;
+    }
 
     summary {
       position: relative;
@@ -35,10 +40,28 @@
         height: 1.25em;
         border-left: 1px solid $pageBackgroundColor;
         border-bottom: 1px solid $pageBackgroundColor;
+        &:after {
+          position: relative;
+          left: 0.35em;
+          content: '\25E6';
+        }
+
+        &.selected {
+          &:after {
+            content: '\25CE';
+            left: 0.125em;
+            top: -0.125em;
+          }
+        }
 
         &:hover {
-          background-color: $pageBackgroundColor;
           cursor: pointer;
+
+          &:after {
+            content: '\25EF';
+            left: 0.125em;
+            top: -0.125em;
+          }
         }
       }
     }
@@ -62,7 +85,7 @@
           border: 1px solid $pageBackgroundColor;
           margin-right: -1px;
           margin-bottom: -1px;
-          padding: 0.25em;
+          height: 1.25em;
 
           &.attributeName {
 

@@ -61,8 +61,8 @@ class GraphicsDirectView extends JoinableView {
     });
   }
   draw (d3el) {
-    d3el.selectAll('.notUnderSelectedRoot')
-      .classed('notUnderSelectedRoot', false);
+    d3el.selectAll('.notJoinable')
+      .classed('notJoinable', false);
 
     let graphicsContent = d3el.select('#graphicsContent');
     function deemphasizeSiblings (element) {
@@ -71,7 +71,7 @@ class GraphicsDirectView extends JoinableView {
       }
       Array.from(element.parentElement.children).forEach(sibling => {
         if (sibling !== element) {
-          d3.select(sibling).classed('notUnderSelectedRoot', true);
+          d3.select(sibling).classed('notJoinable', true);
         }
       });
       deemphasizeSiblings(element.parentElement);

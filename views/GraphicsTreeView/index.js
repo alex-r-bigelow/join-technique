@@ -21,28 +21,45 @@ class GraphicsTreeView extends JoinableView {
     }
   }
   draw (d3el) {
+    let self = this;
     function drawTreeLevel (targetD3element, sourceParentElement, depth) {
       let children = Array.from(sourceParentElement.children);
       if (children.length === 0) {
+        // Base case; don't continue the tree if there aren't any child elements
         return;
       }
+
+      // Create details and summary objects for collapsing / expanding
       let details = targetD3element.selectAll('details').data(children);
       details.exit().remove();
       let detailsEnter = details.enter().append('details');
       let summaryEnter = detailsEnter.append('summary');
       summaryEnter.append('div').classed('tagName', true);
       summaryEnter.append('div').classed('rootSelector', true);
+      // We will also want a list of the DOM attributes if there are any
       detailsEnter.append('ul');
       details = detailsEnter.merge(details);
 
-      // details.style('left', -depth + 'em');
+      // If the current root is the parent of this item, it's eligible for
+      // joining to the dataset
+      let isJoinable = sourceParentElement === self.model.getCurrentRoot();
+      details.classed('isJoinable', isJoinable);
 
-      details.select('summary')
+      // Add and scale the summary row (tag name + root selector)
+      let summary = details.select('summary')
         .style('left', depth + 'em')
-        .style('width', 'calc(100% - ' + depth + 'em)')
-        .select('.tagName')
+        .style('width', 'calc(100% - ' + depth + 'em)');
+      summary.select('.tagName')
         .text(d => d.tagName);
+      summary.select('.rootSelector')
+        .classed('selected', d => d === self.model.getCurrentRoot())
+        .on('click', d => {
+          self.model.setCurrentRoot(d);
+          d3.event.preventDefault();
+          self.render();
+        });
 
+      // If there are any attributes of the element, list them as a table
       let attributes = details.select('ul').selectAll('li')
         .data(d => Array.from(d.attributes));
       attributes.exit().remove();
