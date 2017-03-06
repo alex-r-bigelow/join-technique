@@ -22,9 +22,8 @@
 
     summary {
       position: relative;
-      top: 0px;
       outline: none;
-      height: 1.25em;
+      padding-top: 0.25em;
 
       .tagName {
         position: absolute;
@@ -44,14 +43,6 @@
           position: relative;
           left: 0.35em;
           content: '\25E6';
-        }
-
-        &.selected {
-          &:after {
-            content: '\25CE';
-            left: 0.125em;
-            top: -0.125em;
-          }
         }
 
         &:hover {
@@ -96,6 +87,19 @@
             color: $Black;
           }
         }
+      }
+    }
+  }
+
+  details.selected {
+    & > summary {
+      background-color: $selectionDarkColor;
+      color: $White;
+
+      .rootSelector:after {
+        content: '\25CE';
+        left: 0.125em;
+        top: -0.125em;
       }
     }
   }
