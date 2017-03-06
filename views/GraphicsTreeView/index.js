@@ -9,6 +9,8 @@ class GraphicsTreeView extends JoinableView {
   constructor () {
     super();
     this.icon = treeIcon;
+
+    this.expandedState = {};
   }
   setup (d3el) {
     d3el.html(template);
@@ -19,6 +21,8 @@ class GraphicsTreeView extends JoinableView {
       window.setTimeout(() => { this.dirty = true; this.render(d3el); }, 200);
       return;
     }
+
+    this.firstDraw = true;
   }
   draw (d3el) {
     let self = this;
@@ -46,6 +50,24 @@ class GraphicsTreeView extends JoinableView {
       // joining to the dataset
       let isJoinable = sourceParentElement === self.model.getCurrentRoot();
       details.classed('isJoinable', isJoinable);
+
+      // Whenever the user collapses / expands a details element, save the state
+      // in the event we need to do a fresh render
+      details.on('toggle', function (d) {
+        // this refers to the DOM element
+        let selector = self.model.getSelector(d);
+        if (d3.select(this).property('open')) {
+          self.expandedState[selector] = true;
+        } else {
+          delete self.expandedState[selector];
+        }
+      });
+      if (self.firstDraw) {
+        details.property('open', function (d) {
+          // this refers to the DOM element
+          return self.expandedState[self.model.getSelector(d)];
+        });
+      }
 
       // Add and scale the summary row (tag name + root selector)
       let summary = details.select('summary')
@@ -80,6 +102,7 @@ class GraphicsTreeView extends JoinableView {
       });
     }
     drawTreeLevel(d3el.select('#graphicsTree'), this.model.doc, 0);
+    this.firstDraw = false;
 
     this.updateVisibleLocations(d3el);
   }
