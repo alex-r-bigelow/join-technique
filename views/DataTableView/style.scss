@@ -18,20 +18,48 @@
     /* see http://docs.handsontable.com/0.29.2/tutorial-styling.html
     for a reference as to how to customize the table beyond the defaults */
 
-    .handsontable td.area {
+    .handsontable {
+      td.area {
+        /* Background of selected row or column */
         background-color: $selectionLightColor;
+      }
+
+      th {
+        /* default header color */
+        background-color: $lightUiColor;
+
+        /* selected header cell background / foreground */
+        &.ht__highlight {
+          color: $White;
+          background-color: $darkUiColor;
+        }
+      }
     }
 
+    /* default cell borders */
+    .ht_clone_top_left_corner th {
+      border: 1px solid $pageBackgroundColor;
+    }
+    .ht_clone_left th {
+      border-right: 1px solid $pageBackgroundColor;
+      border-left: 1px solid $pageBackgroundColor;
+    }
+    .ht_clone_top th {
+      border-top: 1px solid $pageBackgroundColor;
+      border-right: 1px solid $pageBackgroundColor;
+      border-bottom: 1px solid $pageBackgroundColor;
+    }
+
+    /* selected cell borders */
     .wtBorder {
       background-color: $selectionDarkColor !important;
     }
-
-    .ht__highlight {
-      background-color: $selectionDarkColor;
+    .handsontableInput {
+      box-shadow: 0 0 0 2px $selectionDarkColor inset;
     }
 
     .colHeader:after {
-      color: $pageBackgroundColor;
+      color: $Black;
       position: relative;
       right: auto;
       font-family: sans-serif;
@@ -39,13 +67,5 @@
       margin: 0em 0.5em;
       vertical-align: bottom;
     }
-  }
-  #message {
-    flex: 0 0 auto;
-    text-align: right;
-    margin-top: 1em;
-  }
-  #message.error {
-    color: $errorColor;
   }
 }
