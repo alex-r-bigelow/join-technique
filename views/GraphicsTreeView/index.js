@@ -30,9 +30,11 @@ class GraphicsTreeView extends JoinableView {
       }
 
       // Create details and summary objects for collapsing / expanding
-      let details = targetD3element.selectAll('details').data(children);
+      let details = targetD3element.selectAll('.level' + depth)
+        .data(children, d => self.model.getSelector(d));
       details.exit().remove();
-      let detailsEnter = details.enter().append('details');
+      let detailsEnter = details.enter().append('details')
+        .classed('level' + depth, true);
       let summaryEnter = detailsEnter.append('summary');
       summaryEnter.append('div').classed('tagName', true);
       summaryEnter.append('div').classed('rootSelector', true);

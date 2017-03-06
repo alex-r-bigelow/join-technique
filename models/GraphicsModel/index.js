@@ -1,4 +1,4 @@
-/* globals DOMParser, Element, Node */
+/* globals DOMParser, Element */
 
 import jQuery from 'jquery';
 import JoinableModel from '../JoinableModel';
@@ -10,24 +10,32 @@ class GraphicsModel extends JoinableModel {
     this.doc = new DOMParser().parseFromString(xmlText, 'image/svg+xml');
     this.rootSelector = 'svg';
   }
-  setCurrentRoot (element) {
+  getSelector (element) {
     // this function blatantly adapted from http://stackoverflow.com/questions/3620116/get-css-path-from-dom-element
     if (!(element instanceof Element)) return;
-    var path = [];
-    while (element !== null) {
+    let path = [];
+    let finished = false;
+    while (!finished) {
       var selector = element.tagName.toLowerCase();
       if (element.id) {
         selector += '#' + element.id;
       } else {
         let sib = element;
         let nth = 1;
-        while (sib.nodeType === Node.ELEMENT_NODE && (sib = sib.previousSibling) && nth++);
+        while ((sib = sib.previousElementSibling) && nth++);
         selector += ':nth-child(' + nth + ')';
       }
       path.unshift(selector);
-      element = element.parentElement;
+      if (element.parentElement === null) {
+        finished = true;
+      } else {
+        element = element.parentElement;
+      }
     }
-    this.rootSelector = path.join(' > ');
+    return path.join(' > ');
+  }
+  setCurrentRoot (element) {
+    this.rootSelector = this.getSelector(element);
   }
   getCurrentRoot () {
     return jQuery(this.doc).find(this.rootSelector)[0];
