@@ -1,4 +1,4 @@
-import * as d3 from './lib/d3.min.js';
+import * as d3 from 'd3';
 import jQuery from 'jquery';
 import 'jquery-resizable-dom';
 import './styles/layout.scss';

@@ -77,5 +77,10 @@ module.exports = {
         }
       }
     ]
+  },
+  resolve: {
+    alias: {
+      'd3': path.resolve(__dirname, 'lib/d3.min.js')
+    }
   }
 };
