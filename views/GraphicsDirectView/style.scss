@@ -10,6 +10,19 @@
   .notJoinable {
     opacity: 0.25;
   }
+
+  #selectionOverlay {
+    rect {
+      fill: transparent;
+      stroke: none;
+
+      &:hover {
+        cursor: pointer;
+        stroke: $selectionDarkColor;
+        stroke-width: 3px;
+      }
+    }
+  }
 }
 #zoomControls {
   position: absolute;
