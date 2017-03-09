@@ -23,27 +23,28 @@ class GraphicsDirectView extends JoinableView {
     }
 
     // Inject the svg, with an extra group on top for selection targets
-    d3el.select('#graphicsContent').html(this.model.xmlText)
+    let graphicsContent = d3el.select('#graphicsContent');
+    graphicsContent.html(this.model.xmlText)
       .select('svg').append('g').attr('id', 'selectionOverlay');
 
-    let scrollContainer = d3el.select('#graphicsContent').node();
-    scrollContainer.addEventListener('scroll', () => {
+    let self = this;
+    graphicsContent.on('scroll', function () {
       // Shallow scroll motion effect that needs to happen with the interaction
-      if (this.initialScrollTop === undefined) {
-        this.initialScrollTop = scrollContainer.scrollTop;
-        this.initialScrollLeft = scrollContainer.scrollLeft;
+      if (self.initialScrollTop === undefined) {
+        self.initialScrollTop = this.scrollTop;
+        self.initialScrollLeft = this.scrollLeft;
       }
-      this.joinInterfaceView.scrollView(this, {
-        dx: this.initialScrollLeft - scrollContainer.scrollLeft,
-        dy: this.initialScrollTop - scrollContainer.scrollTop
+      self.joinInterfaceView.scrollView(this, {
+        dx: self.initialScrollLeft - this.scrollLeft,
+        dy: self.initialScrollTop - this.scrollTop
       });
     }, { passive: true });
-    scrollContainer.addEventListener('scroll', Underscore.debounce(() => {
+    graphicsContent.on('scroll', Underscore.debounce(() => {
       // Once points have been moved, add / remove / update them
-      this.updateVisibleLocations(d3el);
-      this.joinInterfaceView.render();
-      this.initialScrollTop = undefined;
-      this.initialScrollLeft = undefined;
+      self.updateVisibleLocations(d3el);
+      self.joinInterfaceView.render();
+      self.initialScrollTop = undefined;
+      self.initialScrollLeft = undefined;
     }, 200), { passive: true });
 
     // Finally, listen to the rows for updates, so that we
@@ -113,7 +114,6 @@ class GraphicsDirectView extends JoinableView {
 
     // Update the selection overlay, making interaction targets for
     // the current root's immediate children
-    let containerBounds = graphicsContent.node().getBoundingClientRect();
     let selectionOverlay = d3el.select('#selectionOverlay');
     let selectionTargets = selectionOverlay.selectAll('.selectionTarget')
       .data(this.getJoinableElements(d3el), d => d.selector);
@@ -121,10 +121,11 @@ class GraphicsDirectView extends JoinableView {
     selectionTargets = selectionTargets.enter().append('rect')
       .classed('selectionTarget', true)
       .merge(selectionTargets);
-    selectionTargets.attr('x', d => (d.bounds.left - containerBounds.left) + 'px')
-      .attr('y', d => (d.bounds.top - containerBounds.top) + 'px')
-      .attr('width', d => d.bounds.width + 'px')
-      .attr('height', d => d.bounds.height + 'px')
+    selectionTargets
+      .attr('x', d => d.localBounds.left + 'px')
+      .attr('y', d => d.localBounds.top + 'px')
+      .attr('width', d => d.localBounds.width + 'px')
+      .attr('height', d => d.localBounds.height + 'px')
       .on('click', d => {
         this.model.setCurrentRoot(d.element);
         this.render();
@@ -133,16 +134,27 @@ class GraphicsDirectView extends JoinableView {
     this.updateVisibleLocations(d3el);
   }
   getJoinableElements (d3el) {
+    let graphicsContentNode = d3el.select('#graphicsContent').node();
+    let containerBounds = graphicsContentNode.getBoundingClientRect();
+    let zoomFactor = parseFloat(d3el.select('#zoomPercent').property('value')) / 100;
     return this.model.getCurrentChildren().map(d => {
       // this is a little tricky; d refers to the DOM node in the model
       // (that isn't in the page)... so to get the bounds, we need to select
       // the DOM element in the view, not the model
       let selector = this.model.getSelector(d);
+      let globalBounds = d3el.select('#graphicsContent')
+        .select(selector).node().getBoundingClientRect();
+      let localBounds = {
+        left: (globalBounds.left + graphicsContentNode.scrollLeft - containerBounds.left) / zoomFactor,
+        top: (globalBounds.top + graphicsContentNode.scrollTop - containerBounds.top) / zoomFactor,
+        width: globalBounds.width / zoomFactor,
+        height: globalBounds.height / zoomFactor
+      };
       return {
         element: d,
         selector: selector,
-        bounds: d3el.select('#graphicsContent')
-          .select(selector).node().getBoundingClientRect()
+        globalBounds,
+        localBounds
       };
     });
   }
@@ -167,10 +179,10 @@ class GraphicsDirectView extends JoinableView {
     let self = this;
     joinableElements.forEach((d, i) => {
       // this refers to the DOM element
-      let leftBound = Math.max(d.bounds.left, containerBBox.left);
-      let rightBound = Math.min(d.bounds.right, containerBBox.right);
-      let topBound = Math.max(d.bounds.top, containerBBox.top);
-      let bottomBound = Math.min(d.bounds.bottom, containerBBox.bottom);
+      let leftBound = Math.max(d.globalBounds.left, containerBBox.left);
+      let rightBound = Math.min(d.globalBounds.right, containerBBox.right);
+      let topBound = Math.max(d.globalBounds.top, containerBBox.top);
+      let bottomBound = Math.min(d.globalBounds.bottom, containerBBox.bottom);
 
       let location = {
         x: (leftBound + rightBound) / 2,
