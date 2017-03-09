@@ -1,4 +1,6 @@
 import * as d3 from 'd3';
+import Underscore from 'underscore';
+
 import JoinableView from '../JoinableView';
 
 import template from './template.html';
@@ -23,6 +25,30 @@ class GraphicsDirectView extends JoinableView {
     // Inject the svg, with an extra group on top for selection targets
     d3el.select('#graphicsContent').html(this.model.xmlText)
       .select('svg').append('g').attr('id', 'selectionOverlay');
+
+    let scrollContainer = d3el.select('#graphicsContent').node();
+    scrollContainer.addEventListener('scroll', () => {
+      // Shallow scroll motion effect that needs to happen with the interaction
+      if (this.initialScrollTop === undefined) {
+        this.initialScrollTop = scrollContainer.scrollTop;
+        this.initialScrollLeft = scrollContainer.scrollLeft;
+      }
+      this.joinInterfaceView.scrollView(this, {
+        dx: this.initialScrollLeft - scrollContainer.scrollLeft,
+        dy: this.initialScrollTop - scrollContainer.scrollTop
+      });
+    }, { passive: true });
+    scrollContainer.addEventListener('scroll', Underscore.debounce(() => {
+      // Once points have been moved, add / remove / update them
+      this.updateVisibleLocations(d3el);
+      this.joinInterfaceView.render();
+      this.initialScrollTop = undefined;
+      this.initialScrollLeft = undefined;
+    }, 200), { passive: true });
+
+    // Finally, listen to the rows for updates, so that we
+    // re-render ourselves when necessary
+    this.model.on('update', () => { this.render(d3el); });
 
     // Figure out the native SVG size in pixels... because width and height
     // attributes can be specified in units other than px (and we want to
@@ -60,6 +86,8 @@ class GraphicsDirectView extends JoinableView {
       this.zoom(d3el, percent);
     });
 
+    this.firstDraw = true;
+
     this.zoom(d3el, 100);
   }
   draw (d3el) {
@@ -88,7 +116,7 @@ class GraphicsDirectView extends JoinableView {
     let containerBounds = graphicsContent.node().getBoundingClientRect();
     let selectionOverlay = d3el.select('#selectionOverlay');
     let selectionTargets = selectionOverlay.selectAll('.selectionTarget')
-      .data(this.getJoinableElements(), d => d.selector);
+      .data(this.getJoinableElements(d3el), d => d.selector);
     selectionTargets.exit().remove();
     selectionTargets = selectionTargets.enter().append('rect')
       .classed('selectionTarget', true)
@@ -127,7 +155,49 @@ class GraphicsDirectView extends JoinableView {
     this.render();
   }
   updateVisibleLocations (d3el) {
-    // TODO
+    let containerBBox = d3el.select('#graphicsContent').node().getBoundingClientRect();
+    let joinableElements = this.getJoinableElements(d3el);
+
+    // Store the old locations so we can tell if anything changed
+    let oldLocations = this.visibleLocations;
+
+    // Figure out our new set of visible locations
+    this.visibleLocations = {};
+    this.globalIndices = [];
+    let self = this;
+    joinableElements.forEach((d, i) => {
+      // this refers to the DOM element
+      let leftBound = Math.max(d.bounds.left, containerBBox.left);
+      let rightBound = Math.min(d.bounds.right, containerBBox.right);
+      let topBound = Math.max(d.bounds.top, containerBBox.top);
+      let bottomBound = Math.min(d.bounds.bottom, containerBBox.bottom);
+
+      let location = {
+        x: (leftBound + rightBound) / 2,
+        y: (topBound + bottomBound) / 2
+      };
+      location.transitioning = leftBound >= rightBound - this.emSize ||
+        topBound >= bottomBound - this.emSize;
+
+      self.visibleLocations[i] = location;
+      if (!location.transitioning) {
+        self.globalIndices.push(i);
+      }
+      // Assess whether anything has actually changed; if it has,
+      // we may need to issue a render call
+      if (i in oldLocations &&
+        oldLocations[i].x === location.x &&
+        oldLocations[i].y === location.y &&
+        oldLocations[i].transitioning === location.transitioning) {
+        delete oldLocations[i];
+      }
+    });
+
+    // If something changed, signal our parent view that the indices have changed
+    if (this.firstDraw || Object.keys(oldLocations).length > 0) {
+      this.joinInterfaceView.updateVisibleItems();
+      this.firstDraw = false;
+    }
   }
 }
 

@@ -80,7 +80,7 @@ class DataTableView extends JoinableView {
     this.model.on('update', () => { this.render(d3el); });
 
     // A flag to force an update of the visible positions
-    this.firstRender = true;
+    this.firstDraw = true;
   }
   draw (d3el) {
     let currentRows = this.model ? this.model.rows : null;
@@ -187,9 +187,9 @@ class DataTableView extends JoinableView {
     });
 
     // If something changed, signal our parent view that the indices have changed
-    if (this.firstRender || Object.keys(oldLocations).length > 0) {
+    if (this.firstDraw || Object.keys(oldLocations).length > 0) {
       this.joinInterfaceView.updateVisibleItems();
-      this.firstRender = false;
+      this.firstDraw = false;
     }
   }
 }

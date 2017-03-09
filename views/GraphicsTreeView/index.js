@@ -130,7 +130,6 @@ class GraphicsTreeView extends JoinableView {
       });
     }
     drawTreeLevel(d3el.select('#graphicsTree'), this.model.doc, 0);
-    this.firstDraw = false;
 
     this.updateVisibleLocations(d3el);
   }
@@ -178,9 +177,9 @@ class GraphicsTreeView extends JoinableView {
     });
 
     // If something changed, signal our parent view that the indices have changed
-    if (this.firstRender || Object.keys(oldLocations).length > 0) {
+    if (this.firstDraw || Object.keys(oldLocations).length > 0) {
       this.joinInterfaceView.updateVisibleItems();
-      this.firstRender = false;
+      this.firstDraw = false;
     }
   }
 }
