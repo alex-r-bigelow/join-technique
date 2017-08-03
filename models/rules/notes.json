@@ -1,0 +1,62 @@
+{
+  "svg elements": {
+    "circle": ["cx", "cy", "r", "transform"],
+    "path": ["d", "transform"],
+    "line": ["convert to d string"],
+    "g": ["transform"],
+    "use": ["id"],
+    "text": ["textContent"]
+  },
+  "inference functions": {
+    "raw matching order": [
+      {
+        "technique": "dataset / graphics order",
+        "clue": "matching indices are sequential",
+        "function shape": "match based on index",
+        "scoring approach": "how close the matches are to being sequential"
+      }
+    ],
+    "number": [
+      {
+        "technique": "linear regression",
+        "clue": "try for numbers, strings that convert to dates",
+        "function shape": "DOM NUMBER = slope * DATA VALUE + intercept",
+        "scoring approach": "r squared"
+      }
+    ],
+    "string": [
+      {
+        "technique": "categorical matching",
+        "clue": "try for all strings",
+        "function shape": "DOM STRING = map[DATA VALUE]",
+        "scoring approach": "how close / far the relationship is from a one-to-one matching"
+      },
+      {
+        "technique": "ordinal list",
+        "clue": "a lot of strings match known orders (e.g. Jan-Dec, ...) / convert strings to numbers alphabetically",
+        "function shape": "DATA VALUE -> order.indexOf(DATA VALUE); try linear regression",
+        "scoring approach": "use linear regression r-squared"
+      }
+    ],
+    "path string": [
+      {
+        "technique": "d3.arc inference",
+        "clue": "'A' argument in path / maybe some kind of way to evaluate 'curviness'?",
+        "parameters": ["startAngle", "endAngle", "outerRadius"],
+        "refinement options": ["innerRadius", "cornerRadius", "padAngle", "padRadius"]
+      },
+      {
+        "technique": "d3.line / d3.area / d3.stack inference",
+        "clue": "Many points bound to one path",
+        "parameters": ["x scale", "y scale"],
+        "refinement options": ["various alignments (first point, last point, center)",
+                               "curve type matching (at the rough level, linearize paths)"]
+      },
+      {
+        "technique": "node-link inference",
+        "clue": "lots of repeated categorical values in the data (source / sink style)",
+        "parameters": []
+      }
+    ]
+  }
+}
